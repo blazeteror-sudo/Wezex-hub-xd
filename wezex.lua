@@ -25,6 +25,10 @@ local State = {
 }
 
 local CONFIG_FILE = "wezex_winter_config.json"
+local screenGui
+local mainFrame
+local openBtn
+local isOpen = false
 
 local function save()
     local cfg = {}
@@ -289,9 +293,6 @@ local function createWinterBackground(parent)
 end
 
 -- ========== GUI ==========
-local screenGui
-local mainFrame
-local openBtn
 
 local function showKeyWindow()
     local keyGui = Instance.new("ScreenGui")
@@ -422,7 +423,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = CoreGui
 
-    -- ========== КНОПКА ВОЗВРАТА МЕНЮ ==========
+    -- ========== КНОПКА ВОЗВРАТА ==========
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Name = "OpenBtn"
     openBtn.Size = UDim2.new(0, 60, 0, 60)
@@ -444,20 +445,27 @@ function createMainGUI()
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openBtn.Visible = false
+        isOpen = true
     end)
 
     -- ========== ОСНОВНОЕ МЕНЮ ==========
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 360, 0, 460)
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
     mainFrame.Position = UDim2.new(0.5, -180, 0.5, -230)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 30, 50)
     mainFrame.BackgroundTransparency = 0.15
     mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 24)
     local stroke = Instance.new("UIStroke", mainFrame)
     stroke.Color = Color3.fromRGB(150, 200, 255)
     stroke.Thickness = 1.5
     stroke.Transparency = 0.3
+
+    -- Анимация открытия (гарантированно)
+    TweenService:Create(mainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 360, 0, 460)
+    }):Play()
 
     local title = Instance.new("TextLabel", mainFrame)
     title.Size = UDim2.new(1, 0, 0, 50)
@@ -492,6 +500,7 @@ function createMainGUI()
     closeBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = false
         openBtn.Visible = true
+        isOpen = false
     end)
 
     local content = Instance.new("ScrollingFrame", mainFrame)
@@ -561,10 +570,4 @@ function createMainGUI()
 
         local valueLbl = Instance.new("TextLabel", frame)
         valueLbl.Size = UDim2.new(0, 50, 0, 20)
-        valueLbl.Position = UDim2.new(1, -55, 0, 0)
-        valueLbl.BackgroundTransparency = 1
-        valueLbl.Font = Enum.Font.GothamBold
-        valueLbl.TextSize = 14
-        valueLbl.TextColor3 = Color3.fromRGB(150, 200, 255)
-        valueLbl.Text = tostring(default)
-        valueLbl.
+        valueLbl.P
