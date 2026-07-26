@@ -1,4 +1,4 @@
--- Wezex Hub v3 (FINAL TOGGLE FIX + DRAGGABLE)
+-- Wezex Hub v5 (TOUCH DRAG + GLOW + FINAL UI)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -22,7 +22,6 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
-local dragData = nil
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -150,12 +149,13 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== ПЕРЕТАСКИВАНИЕ ==========
+-- ========== ПЕРЕТАСКИВАНИЕ (МЫШЬ + ТАЧ) ==========
 local function makeDraggable(frame, target)
     target = target or frame
     local dragging = false
     local dragStart, startPos
 
+    -- МЫШЬ
     frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -173,6 +173,33 @@ local function makeDraggable(frame, target)
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
+            target.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- ТАЧ (палец)
+    frame.TouchBegan:Connect(function(touch)
+        if touch.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = touch.Position
+            startPos = target.Position
+        end
+    end)
+
+    frame.TouchEnded:Connect(function(touch)
+        if touch.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.TouchMoved:Connect(function(touch)
+        if dragging and touch.UserInputType == Enum.UserInputType.Touch then
+            local delta = touch.Position - dragStart
             target.Position = UDim2.new(
                 startPos.X.Scale,
                 startPos.X.Offset + delta.X,
@@ -368,7 +395,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
 
-    -- КНОПКА ОТКРЫТИЯ
+    -- КНОПКА ОТКРЫТИЯ (перетаскиваемая)
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -391,10 +418,23 @@ function createMainGUI()
 
     makeDraggable(openBtn, openBtn)
 
+    -- ОБВОДКА (GLOW)
+    local glowFrame = Instance.new("Frame")
+    glowFrame.Size = UDim2.new(0, 240, 0, 175)
+    glowFrame.Position = UDim2.new(0.5, -120, 0.5, -87)
+    glowFrame.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    glowFrame.BackgroundTransparency = 0.5
+    glowFrame.BorderSizePixel = 0
+    glowFrame.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 8
+    blur.Parent = glowFrame
+
     -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 230, 0, 170)
-    mainFrame.Position = UDim2.new(0.5, -115, 0.5, -85)
+    mainFrame.Size = UDim2.new(0, 236, 0, 171)
+    mainFrame.Position = UDim2.new(0.5, -118, 0.5, -85)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -402,7 +442,7 @@ function createMainGUI()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
 
-    -- ЗАГОЛОВОК (для перетаскивания)
+    -- ЗАГОЛОВОК (перетаскиваемый)
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 30)
     titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -438,24 +478,31 @@ function createMainGUI()
         isOpen = false
     end)
 
+    -- КОНТЕЙНЕР С АВТО-РАЗМЕЩЕНИЕМ
     local content = Instance.new("Frame")
     content.Size = UDim2.new(1, -14, 1, -48)
     content.Position = UDim2.new(0, 7, 0, 40)
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
 
-    -- ====== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ ======
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = content
+
+    -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
     local function createToggle(label, stateKey, callback)
-        -- stateKey — строка: "esp" или "knifeAim"
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 0, 30)
+        frame.Size = UDim2.new(0.95, 0, 0, 32)
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
         frame.BackgroundTransparency = 0.4
         frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
         local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.6, 0, 1, 0)
+        lbl.Size = UDim2.new(0.55, 0, 1, 0)
         lbl.Position = UDim2.new(0.04, 0, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Font = Enum.Font.GothamBold
@@ -466,8 +513,8 @@ function createMainGUI()
         lbl.Parent = frame
 
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 48, 0, 20)
-        btn.Position = UDim2.new(1, -54, 0.5, -10)
+        btn.Size = UDim2.new(0, 52, 0, 22)
+        btn.Position = UDim2.new(1, -58, 0.5, -11)
         btn.BorderSizePixel = 0
         btn.TextSize = 10
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -475,7 +522,6 @@ function createMainGUI()
         btn.Parent = frame
         Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
 
-        -- Функция обновления кнопки (читает актуальное состояние из State)
         local function updateButton()
             local currentState = State[stateKey]
             if currentState then
@@ -489,17 +535,13 @@ function createMainGUI()
         updateButton()
 
         btn.MouseButton1Click:Connect(function()
-            -- Вызываем колбэк (toggleESP или toggleKnifeAim), который меняет State
             callback()
-            -- Обновляем кнопку согласно новому состоянию
             updateButton()
         end)
 
-        -- Возвращаем функцию для принудительного обновления (если понадобится)
         return updateButton
     end
 
-    -- СОЗДАЁМ ПЕРЕКЛЮЧАТЕЛИ С ПРЯМЫМ ДОСТУПОМ К STATE
     createToggle("ESP (Duels)", "esp", function()
         toggleESP()
     end)
@@ -526,7 +568,6 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
-    -- Синхронизация при старте (если вдруг State уже был изменён)
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
 end
