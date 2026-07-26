@@ -1,4 +1,4 @@
--- Wezex Hub v7 (SPIN BOT)
+-- Wezex Hub v8 (TELEPORT TO PLAYERS)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,6 +8,7 @@ local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local KnifeController
+local TweenService = game:GetService("TweenService")
 
 -- Очистка
 pcall(function()
@@ -21,15 +22,13 @@ local State = {
     knifeAim = false,
     noclip = false,
     infJump = false,
-    spin = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
 local noclipConnection = nil
 local infJumpConnection = nil
-local spinConnection = nil
-local spinSpeed = 1.5  -- регулировка скорости вращения
+local teleportFrame = nil
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -202,24 +201,113 @@ local function toggleInfJump()
     end
 end
 
--- ========== SPIN BOT ==========
-local function toggleSpin()
-    State.spin = not State.spin
-    if State.spin then
-        if spinConnection then spinConnection:Disconnect() end
-        spinConnection = RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local root = char.HumanoidRootPart
-                local current = root.Orientation
-                root.Orientation = Vector3.new(current.X, current.Y + spinSpeed, current.Z)
-            end
-        end)
-    else
-        if spinConnection then
-            spinConnection:Disconnect()
-            spinConnection = nil
+-- ========== TELEPORT TO PLAYERS ==========
+local function teleportToPlayer(player)
+    if not player or not player.Character then return end
+    local targetPart = player.Character:FindFirstChild("HumanoidRootPart") or player.Character:FindFirstChild("Head")
+    if not targetPart then return end
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
+    
+    -- Плавный телепорт через Tween
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {Position = targetPart.Position + Vector3.new(0, 3, 0)})
+    tween:Play()
+end
+
+local function createTeleportList()
+    -- Уничтожаем старый список, если есть
+    if teleportFrame then
+        teleportFrame:Destroy()
+        teleportFrame = nil
+        return
+    end
+    
+    teleportFrame = Instance.new("Frame")
+    teleportFrame.Size = UDim2.new(0, 180, 0, 250)
+    teleportFrame.Position = UDim2.new(0.5, -90, 0.5, -125)
+    teleportFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
+    teleportFrame.BackgroundTransparency = 0.1
+    teleportFrame.BorderSizePixel = 0
+    teleportFrame.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 12)
+    teleportFrame.ClipsDescendants = true
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 4)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 16
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Teleport"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = teleportFrame
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 22, 0, 22)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"
+    closeBtn.TextSize = 12
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Parent = teleportFrame
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    closeBtn.MouseButton1Click:Connect(function()
+        if teleportFrame then
+            teleportFrame:Destroy()
+            teleportFrame = nil
         end
+    end)
+    
+    local listContainer = Instance.new("Frame")
+    listContainer.Size = UDim2.new(1, -10, 1, -46)
+    listContainer.Position = UDim2.new(0, 5, 0, 40)
+    listContainer.BackgroundTransparency = 1
+    listContainer.Parent = teleportFrame
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 4)
+    layout.Parent = listContainer
+    
+    -- Добавляем кнопки для каждого игрока
+    local players = Players:GetPlayers()
+    for _, plr in ipairs(players) do
+        if plr ~= LocalPlayer then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0.9, 0, 0, 28)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+            btn.BackgroundTransparency = 0.3
+            btn.BorderSizePixel = 0
+            btn.Text = plr.Name
+            btn.TextSize = 12
+            btn.TextColor3 = Color3.fromRGB(220, 210, 255)
+            btn.Font = Enum.Font.GothamBold
+            btn.Parent = listContainer
+            Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+            
+            btn.MouseButton1Click:Connect(function()
+                teleportToPlayer(plr)
+                if teleportFrame then
+                    teleportFrame:Destroy()
+                    teleportFrame = nil
+                end
+            end)
+        end
+    end
+end
+
+local function toggleTeleport()
+    if teleportFrame and teleportFrame.Parent then
+        teleportFrame:Destroy()
+        teleportFrame = nil
+    else
+        createTeleportList()
     end
 end
 
@@ -432,7 +520,7 @@ function createMainGUI()
 
     -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 210)  -- увеличен под 5 функций
+    mainFrame.Size = UDim2.new(0, 220, 0, 210)
     mainFrame.Position = UDim2.new(0.5, -110, 0.5, -105)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
@@ -487,99 +575,4 @@ function createMainGUI()
     layout.Parent = content
 
     -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
-    local function createToggle(label, stateKey, callback)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 28)
-        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-        frame.BackgroundTransparency = 0.4
-        frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.55, 0, 1, 0)
-        lbl.Position = UDim2.new(0.04, 0, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 11
-        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
-        lbl.Text = label
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = frame
-
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 48, 0, 20)
-        btn.Position = UDim2.new(1, -54, 0.5, -10)
-        btn.BorderSizePixel = 0
-        btn.TextSize = 9
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = frame
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
-
-        local function updateButton()
-            if State[stateKey] then
-                btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-                btn.Text = "ON"
-            else
-                btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                btn.Text = "OFF"
-            end
-        end
-        updateButton()
-
-        btn.MouseButton1Click:Connect(function()
-            callback()
-            updateButton()
-        end)
-    end
-
-    createToggle("ESP (Duels)", "esp", function()
-        toggleESP()
-    end)
-
-    createToggle("Silent Aim", "knifeAim", function()
-        toggleKnifeAim()
-    end)
-
-    createToggle("Noclip", "noclip", function()
-        toggleNoclip()
-    end)
-
-    createToggle("Infinity Jump", "infJump", function()
-        toggleInfJump()
-    end)
-
-    createToggle("Spin Bot", "spin", function()
-        toggleSpin()
-    end)
-
-    -- ГОРЯЧАЯ КЛАВИША ]
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.RightBracket then
-            if mainFrame.Visible then
-                mainFrame.Visible = false
-                openBtn.Visible = true
-                isOpen = false
-            else
-                mainFrame.Visible = true
-                openBtn.Visible = false
-                isOpen = true
-            end
-        end
-    end)
-
-    task.wait(0.05)
-    createSnow(mainFrame)
-
-    mainFrame.Visible = true
-    openBtn.Visible = false
-    isOpen = true
-
-    if State.esp then toggleESP() end
-    if State.knifeAim then toggleKnifeAim() end
-    if State.noclip then toggleNoclip() end
-    if State.infJump then toggleInfJump() end
-    if State.spin then toggleSpin() end
-end
-
-showKeyWindow()
+    local funct
