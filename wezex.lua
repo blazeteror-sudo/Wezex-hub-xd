@@ -21,7 +21,7 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowflakes = {}
 
--- ========== KNIFE AIM ==========
+-- ========== KNIFE AIM (Silent Aim) ==========
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
 local KnifeController = pcall(function()
@@ -109,7 +109,7 @@ local function toggleESP()
     end
 end
 
--- ========== РЕАЛИСТИЧНЫЕ СНЕЖИНКИ ==========
+-- ========== СНЕЖИНКИ ==========
 local function createSnowflakes(parent)
     for _, f in ipairs(snowflakes) do if f and f.Parent then f:Destroy() end end
     snowflakes = {}
@@ -130,7 +130,6 @@ local function createSnowflakes(parent)
             drift = 0.002 + math.random()*0.006,
             phase = math.random()*math.pi*2,
             startX = f.Position.X.Scale,
-            startY = f.Position.Y.Scale,
         }
         table.insert(snowflakes, f)
         RunService.RenderStepped:Connect(function()
@@ -235,7 +234,6 @@ function createMainGUI()
     screenGui.Name = "WezexHub"
     screenGui.ResetOnSpawn = false
 
-    -- Кнопка W
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Size = UDim2.new(0, 48, 0, 48)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -255,8 +253,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 110)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
+    mainFrame.Size = UDim2.new(0, 200, 0, 130)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -333,6 +331,7 @@ function createMainGUI()
         State.knifeAim = v
         toggleKnifeAim()
     end)
+
     createToggle("Player ESP", State.esp, function(v)
         State.esp = v
         toggleESP()
