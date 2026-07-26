@@ -1,4 +1,4 @@
--- Wezex Hub by @Fanqwezex (HOTFIX - KEY SYSTEM FIXED)
+-- Wezex Hub v3 (FINAL TOGGLE FIX + DRAGGABLE)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -7,10 +7,8 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local KnifeController
 
--- Уничтожаем старые GUI
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -24,8 +22,9 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
+local dragData = nil
 
--- ========== ESP ДЛЯ ДУЭЛЕЙ ==========
+-- ========== ESP ==========
 local espHighlights = {}
 local espConnections = {}
 
@@ -151,7 +150,40 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== СИСТЕМА СНЕГОПАДА ==========
+-- ========== ПЕРЕТАСКИВАНИЕ ==========
+local function makeDraggable(frame, target)
+    target = target or frame
+    local dragging = false
+    local dragStart, startPos
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = target.Position
+        end
+    end)
+
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            target.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ========== СНЕГОПАД ==========
 local function stopSnow()
     if snowConnection then
         snowConnection:Disconnect()
@@ -167,8 +199,6 @@ end
 
 local function createSnow(parentFrame)
     stopSnow()
-    
-    -- Ждём рендера фрейма
     if parentFrame.AbsoluteSize.X == 0 or parentFrame.AbsoluteSize.Y == 0 then
         parentFrame:WaitForChild("Size")
         task.wait(0.1)
@@ -234,7 +264,6 @@ end
 
 -- ========== GUI ==========
 local function showKeyWindow()
-    -- Убеждаемся, что старые GUI уничтожены
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
@@ -255,7 +284,6 @@ local function showKeyWindow()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
     panel.ClipsDescendants = true
 
-    -- Заголовок
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
     title.Position = UDim2.new(0, 0, 0, 6)
@@ -267,7 +295,6 @@ local function showKeyWindow()
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = panel
 
-    -- Подзаголовок
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, 0, 0, 18)
     info.Position = UDim2.new(0, 0, 0, 42)
@@ -279,7 +306,6 @@ local function showKeyWindow()
     info.TextXAlignment = Enum.TextXAlignment.Center
     info.Parent = panel
 
-    -- Поле ввода
     local keyBox = Instance.new("TextBox")
     keyBox.Size = UDim2.new(0.6, 0, 0, 34)
     keyBox.Position = UDim2.new(0.2, 0, 0, 66)
@@ -296,7 +322,6 @@ local function showKeyWindow()
     keyBox.Parent = panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-    -- Кнопка входа
     local enterBtn = Instance.new("TextButton")
     enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
     enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
@@ -310,7 +335,6 @@ local function showKeyWindow()
     enterBtn.Parent = panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-    -- Функция проверки ключа
     local function checkKey()
         if keyBox.Text == CORRECT_KEY then
             keyGui:Destroy()
@@ -326,19 +350,13 @@ local function showKeyWindow()
     end
 
     enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
+    keyBox.FocusLost:Connect(function(enterPressed) if enterPressed then checkKey() end end)
+    UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then checkKey() end end)
 
-    -- Небольшой снегопад для окна ключа (опционально)
     task.wait(0.05)
     createSnow(panel)
 end
 
--- ========== ОСНОВНОЕ МЕНЮ ==========
 function createMainGUI()
     pcall(function()
         if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
@@ -350,7 +368,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
 
-    -- Кнопка открытия (круглая W)
+    -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -371,7 +389,9 @@ function createMainGUI()
         isOpen = true
     end)
 
-    -- Основная панель
+    makeDraggable(openBtn, openBtn)
+
+    -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 230, 0, 170)
     mainFrame.Position = UDim2.new(0.5, -115, 0.5, -85)
@@ -382,7 +402,14 @@ function createMainGUI()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
 
-    -- Заголовок
+    -- ЗАГОЛОВОК (для перетаскивания)
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundTransparency = 1
+    titleBar.Parent = mainFrame
+    makeDraggable(titleBar, mainFrame)
+
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
     title.Position = UDim2.new(0, 0, 0, 4)
@@ -394,7 +421,6 @@ function createMainGUI()
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = mainFrame
 
-    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 24, 0, 24)
     closeBtn.Position = UDim2.new(1, -30, 0, 4)
@@ -412,15 +438,15 @@ function createMainGUI()
         isOpen = false
     end)
 
-    -- Контейнер для переключателей
     local content = Instance.new("Frame")
     content.Size = UDim2.new(1, -14, 1, -48)
     content.Position = UDim2.new(0, 7, 0, 40)
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
 
-    -- Функция создания переключателя
-    local function createToggle(label, stateRef, callback)
+    -- ====== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ ======
+    local function createToggle(label, stateKey, callback)
+        -- stateKey — строка: "esp" или "knifeAim"
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, 0, 0, 30)
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
@@ -443,15 +469,16 @@ function createMainGUI()
         btn.Size = UDim2.new(0, 48, 0, 20)
         btn.Position = UDim2.new(1, -54, 0.5, -10)
         btn.BorderSizePixel = 0
-        btn.Text = stateRef and "ON" or "OFF"
         btn.TextSize = 10
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
         btn.Parent = frame
         Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
 
+        -- Функция обновления кнопки (читает актуальное состояние из State)
         local function updateButton()
-            if stateRef then
+            local currentState = State[stateKey]
+            if currentState then
                 btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
                 btn.Text = "ON"
             else
@@ -462,22 +489,22 @@ function createMainGUI()
         updateButton()
 
         btn.MouseButton1Click:Connect(function()
-            stateRef = not stateRef
-            callback(stateRef)
+            -- Вызываем колбэк (toggleESP или toggleKnifeAim), который меняет State
+            callback()
+            -- Обновляем кнопку согласно новому состоянию
             updateButton()
         end)
 
-        return stateRef
+        -- Возвращаем функцию для принудительного обновления (если понадобится)
+        return updateButton
     end
 
-    -- Создаём переключатели
-    createToggle("ESP (Duels)", State.esp, function(v)
-        State.esp = v
+    -- СОЗДАЁМ ПЕРЕКЛЮЧАТЕЛИ С ПРЯМЫМ ДОСТУПОМ К STATE
+    createToggle("ESP (Duels)", "esp", function()
         toggleESP()
     end)
 
-    createToggle("Silent Aim", State.knifeAim, function(v)
-        State.knifeAim = v
+    createToggle("Silent Aim", "knifeAim", function()
         toggleKnifeAim()
     end)
 
@@ -496,14 +523,12 @@ function createMainGUI()
         end
     end)
 
-    -- Снегопад
     task.wait(0.05)
     createSnow(mainFrame)
 
-    -- Синхронизация состояний
+    -- Синхронизация при старте (если вдруг State уже был изменён)
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
 end
 
--- ЗАПУСК
 showKeyWindow()
