@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
@@ -14,7 +15,7 @@ end)
 
 local CORRECT_KEY = "38399923"
 local State = {
-    silentAim = false,
+    knifeAim = false,
     esp = false,
 }
 
@@ -23,58 +24,69 @@ local mainFrame
 local openBtn
 local isOpen = false
 
--- ========== SILENT AIM (твой код) ==========
-local function getClosestPlayer()
-    local closest = nil
-    local shortestDist = math.huge
+-- ========== KNIFE AIM (твой код) ==========
+getgenv().KnifeConfig = {
+    Enabled = false,
+    HitPart = "Head",
+    FOV = 450
+}
+
+local KnifeController = pcall(function()
+    return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
+end)
+
+local function getClosestTarget()
+    local bestTarget = nil
+    local bestFOV = getgenv().KnifeConfig.FOV
+    local center = Camera.ViewportSize / 2
+
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                local pos, onScreen = Camera:WorldToScreenPoint(player.Character.HumanoidRootPart.Position)
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local hitPart = player.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
+            if hitPart then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(hitPart.Position)
                 if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closest = player.Character
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                    if dist < bestFOV then
+                        bestTarget = player
+                        bestFOV = dist
                     end
                 end
             end
         end
     end
-    return closest
+    return bestTarget
 end
 
-local oldRaycast
-local function toggleSilentAim()
-    State.silentAim = not State.silentAim
-    if State.silentAim then
-        oldRaycast = hookmetamethod(game, "__namecall", function(self, ...)
-            local args = {...}
-            local method = getnamecallmethod()
-            if self == workspace and method == "Raycast" then
-                local target = getClosestPlayer()
-                if target and target:FindFirstChild("Head") then
-                    local origin = args[1]
-                    args[2] = (target.Head.Position - origin).Unit * 1000
+local originalThrow = nil
+local function toggleKnifeAim()
+    State.knifeAim = not State.knifeAim
+    getgenv().KnifeConfig.Enabled = State.knifeAim
+    if State.knifeAim then
+        if not originalThrow and KnifeController then
+            originalThrow = KnifeController._GetThrowDirection
+            KnifeController._GetThrowDirection = function(self, origin)
+                if getgenv().KnifeConfig.Enabled then
+                    local target = getClosestTarget()
+                    if target and target.Character then
+                        local hitPart = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
+                        if hitPart then
+                            return (hitPart.Position - origin.Position).Unit
+                        end
+                    end
                 end
+                return originalThrow(self, origin)
             end
-            return oldRaycast(self, unpack(args))
-        end)
+        end
     else
-        if oldRaycast then
-            hookmetamethod(game, "__namecall", oldRaycast)
-            oldRaycast = nil
+        if originalThrow and KnifeController then
+            KnifeController._GetThrowDirection = originalThrow
+            originalThrow = nil
         end
     end
 end
 
--- ========== ESP (твой код) ==========
-local FILL_COLOR = Color3.fromRGB(255, 0, 0)
-local OUTLINE_COLOR = Color3.fromRGB(255, 255, 255)
-local FILL_TRANSPARENCY = 0.5
-local OUTLINE_TRANSPARENCY = 0
-
+-- ========== ESP ==========
 local espHighlights = {}
 local espConnections = {}
 
@@ -91,24 +103,20 @@ end
 
 local function applyESP(player)
     if player == LocalPlayer then return end
-
     local function setupHighlight(character)
-        local oldEsp = character:FindFirstChild("EspHighlight")
-        if oldEsp then oldEsp:Destroy() end
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "EspHighlight"
-        highlight.FillColor = FILL_COLOR
-        highlight.OutlineColor = OUTLINE_COLOR
-        highlight.FillTransparency = FILL_TRANSPARENCY
-        highlight.OutlineTransparency = OUTLINE_TRANSPARENCY
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Parent = character
-        table.insert(espHighlights, highlight)
+        local old = character:FindFirstChild("WezexESP")
+        if old then old:Destroy() end
+        local h = Instance.new("Highlight")
+        h.Name = "WezexESP"
+        h.FillColor = Color3.fromRGB(255, 0, 0)
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillTransparency = 0.4
+        h.OutlineTransparency = 0
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Parent = character
+        table.insert(espHighlights, h)
     end
-
-    if player.Character then
-        setupHighlight(player.Character)
-    end
+    if player.Character then setupHighlight(player.Character) end
     local conn = player.CharacterAdded:Connect(setupHighlight)
     table.insert(espConnections, conn)
 end
@@ -117,9 +125,7 @@ local function toggleESP()
     State.esp = not State.esp
     if State.esp then
         clearESP()
-        for _, player in ipairs(Players:GetPlayers()) do
-            applyESP(player)
-        end
+        for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
         local conn = Players.PlayerAdded:Connect(applyESP)
         table.insert(espConnections, conn)
     else
@@ -127,7 +133,48 @@ local function toggleESP()
     end
 end
 
--- ========== КОМПАКТНОЕ ОКНО КЛЮЧА ==========
+-- ========== СНЕЖИНКИ (задний фон) ==========
+local function createSnowflakes(parent)
+    local snowflakes = {}
+    for i = 1, 40 do
+        local flake = Instance.new("Frame", parent)
+        flake.Size = UDim2.new(0, math.random(2, 6), 0, math.random(2, 6))
+        flake.Position = UDim2.new(math.random() * 0.95, 0, math.random() * 0.95, 0)
+        flake.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        flake.BackgroundTransparency = 0.2 + math.random() * 0.4
+        flake.BorderSizePixel = 0
+        flake.ZIndex = 10
+        Instance.new("UICorner", flake).CornerRadius = UDim.new(1, 0)
+        flake.Rotation = math.random(-30, 30)
+        local data = {
+            obj = flake,
+            speed = 0.2 + math.random() * 0.4,
+            drift = 0.003 + math.random() * 0.008,
+            phase = math.random() * math.pi * 2,
+            startX = flake.Position.X.Scale,
+        }
+        table.insert(snowflakes, data)
+    end
+
+    RunService.RenderStepped:Connect(function()
+        for _, flake in ipairs(snowflakes) do
+            if flake.obj and flake.obj.Parent then
+                local newY = flake.obj.Position.Y.Scale + flake.speed * 0.002
+                if newY > 1 then
+                    newY = -0.05
+                    flake.obj.Position = UDim2.new(math.random() * 0.95, 0, newY, 0)
+                    flake.startX = flake.obj.Position.X.Scale
+                else
+                    local driftX = flake.startX + math.sin(tick() * flake.drift + flake.phase) * 0.04
+                    flake.obj.Position = UDim2.new(driftX, 0, newY, 0)
+                end
+                flake.obj.Rotation = flake.obj.Rotation + (0.3 + math.random() * 0.5)
+            end
+        end
+    end)
+end
+
+-- ========== ОКНО КЛЮЧА ==========
 local function showKeyWindow()
     local keyGui = Instance.new("ScreenGui")
     keyGui.Name = "KeySystem"
@@ -138,6 +185,8 @@ local function showKeyWindow()
     main.Size = UDim2.new(1, 0, 1, 0)
     main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
     main.BackgroundTransparency = 0.1
+
+    createSnowflakes(main)
 
     local panel = Instance.new("Frame", main)
     panel.Size = UDim2.new(0, 240, 0, 140)
@@ -154,7 +203,7 @@ local function showKeyWindow()
     title.Font = Enum.Font.GothamBlack
     title.TextSize = 18
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
-    title.Text = "❄ Wezex Hub"
+    title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
 
     local info = Instance.new("TextLabel", panel)
@@ -185,7 +234,7 @@ local function showKeyWindow()
     local enterBtn = Instance.new("TextButton", panel)
     enterBtn.Size = UDim2.new(0.4, 0, 0, 32)
     enterBtn.Position = UDim2.new(0.3, 0, 0, 102)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     enterBtn.BackgroundTransparency = 0.2
     enterBtn.BorderSizePixel = 0
     Instance.new("UICorner", enterBtn).CornerRadius = UDim.new(0, 8)
@@ -230,17 +279,17 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = CoreGui
 
-    -- Кнопка возврата
+    -- Кнопка возврата (фиолетовая W)
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Name = "OpenBtn"
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
-    openBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
     openBtn.BackgroundTransparency = 0.2
     openBtn.BorderSizePixel = 0
     Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
-    openBtn.Text = "❄"
-    openBtn.TextSize = 20
+    openBtn.Text = "W"
+    openBtn.TextSize = 24
     openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Visible = false
@@ -250,6 +299,8 @@ function createMainGUI()
         openBtn.Visible = false
         isOpen = true
     end)
+
+    createSnowflakes(screenGui)
 
     -- Основное меню
     mainFrame = Instance.new("Frame", screenGui)
@@ -290,9 +341,6 @@ function createMainGUI()
     content.Position = UDim2.new(0, 6, 0, 42)
     content.BackgroundTransparency = 1
 
-    local layout = Instance.new("UIListLayout", content)
-    layout.Padding = UDim.new(0, 6)
-
     local function createToggle(label, value, callback)
         local frame = Instance.new("Frame", content)
         frame.Size = UDim2.new(1, 0, 0, 30)
@@ -330,10 +378,10 @@ function createMainGUI()
         end)
     end
 
-    createToggle("Silent Aim", State.silentAim, function(v)
-        State.silentAim = v
-        toggleSilentAim()
-    end)
+    createToggle("Knife Aim", State.knifeAim, function(v)
+        State.knifeAim = v
+        toggleKnifeAim()
+    end) Тит
 
     createToggle("Player ESP", State.esp, function(v)
         State.esp = v
@@ -354,7 +402,7 @@ function createMainGUI()
         end
     end)
 
-    if State.silentAim then toggleSilentAim() end
+    if State.knifeAim then toggleKnifeAim() end
     if State.esp then toggleESP() end
 end
 
