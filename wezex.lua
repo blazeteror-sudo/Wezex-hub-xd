@@ -21,13 +21,18 @@ local State = {
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 
--- ========== ESP ==========
-local espHighlights, espConnections = {}, {}
+-- ========== ESP (отдельная функция, без лагов) ==========
+local espHighlights = {}
+local espConnections = {}
 
 local function clearESP()
-    for _, h in ipairs(espHighlights) do if h and h.Parent then h:Destroy() end end
+    for _, h in ipairs(espHighlights) do
+        if h and h.Parent then h:Destroy() end
+    end
     espHighlights = {}
-    for _, c in ipairs(espConnections) do if c then c:Disconnect() end end
+    for _, c in ipairs(espConnections) do
+        if c then c:Disconnect() end
+    end
     espConnections = {}
 end
 
@@ -59,7 +64,9 @@ local function toggleESP()
     State.esp = not State.esp
     if State.esp then
         clearESP()
-        for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
+        for _, p in ipairs(Players:GetPlayers()) do
+            applyESP(p)
+        end
         table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
     else
         clearESP()
@@ -235,8 +242,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 120)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+    mainFrame.Size = UDim2.new(0, 200, 0, 130)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -308,13 +315,11 @@ function createMainGUI()
         end)
     end
 
-    -- ESP сверху
     createToggle("ESP", State.esp, function(v)
         State.esp = v
         toggleESP()
     end)
 
-    -- Silent Aim снизу
     createToggle("Silent Aim", State.knifeAim, function(v)
         State.knifeAim = v
         toggleKnifeAim()
