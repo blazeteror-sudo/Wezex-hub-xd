@@ -17,6 +17,7 @@ end)
 local CORRECT_KEY = "38399923"
 local State = {
     knifeAim = false,
+    esp = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 
@@ -56,7 +57,6 @@ local function applyKnifeAim()
     end
 
     if State.knifeAim then
-        -- ВКЛЮЧАЕМ
         if not originalThrow then
             originalThrow = KnifeController._GetThrowDirection
         end
@@ -73,7 +73,6 @@ local function applyKnifeAim()
             return originalThrow(self, origin)
         end
     else
-        -- ВЫКЛЮЧАЕМ
         if originalThrow and KnifeController then
             KnifeController._GetThrowDirection = originalThrow
             originalThrow = nil
@@ -85,6 +84,51 @@ local function toggleKnifeAim()
     State.knifeAim = not State.knifeAim
     getgenv().KnifeConfig.Enabled = State.knifeAim
     applyKnifeAim()
+end
+
+-- ========== ИДЕАЛЬНЫЙ ESP (свои зелёные, враги красные) ==========
+local espHighlights, espConnections = {}, {}
+
+local function clearESP()
+    for _, h in ipairs(espHighlights) do if h and h.Parent then h:Destroy() end end
+    espHighlights = {}
+    for _, c in ipairs(espConnections) do if c then c:Disconnect() end end
+    espConnections = {}
+end
+
+local function applyESP(player)
+    if player == LocalPlayer then return end
+    local function setup(char)
+        local old = char:FindFirstChild("WezexESP")
+        if old then old:Destroy() end
+        local h = Instance.new("Highlight")
+        h.Name = "WezexESP"
+        if player.Team == LocalPlayer.Team then
+            h.FillColor = Color3.fromRGB(0, 255, 0)
+        else
+            h.FillColor = Color3.fromRGB(255, 0, 0)
+        end
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillTransparency = 0.4
+        h.OutlineTransparency = 0
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Parent = char
+        table.insert(espHighlights, h)
+    end
+    if player.Character then setup(player.Character) end
+    local conn = player.CharacterAdded:Connect(setup)
+    table.insert(espConnections, conn)
+end
+
+local function toggleESP()
+    State.esp = not State.esp
+    if State.esp then
+        clearESP()
+        for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
+        table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
+    else
+        clearESP()
+    end
 end
 
 -- ========== GUI ==========
@@ -191,8 +235,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 80)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -40)
+    mainFrame.Size = UDim2.new(0, 200, 0, 110)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -243,20 +287,22 @@ function createMainGUI()
         lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
         lbl.Text = label
         lbl.TextXAlignment = Enum.TextXAlignment.Left
+
         local btn = Instance.new("TextButton", frame)
         btn.Size = UDim2.new(0, 44, 0, 18)
         btn.Position = UDim2.new(1, -50, 0.5, -9)
-        btn.BackgroundColor3 = value and Color3.fromRGB(80, 220, 160) or Color3.fromRGB(50, 30, 70)
+        btn.BackgroundColor3 = value and Color3.fromRGB(80, 220, 160) or Color3.fromRGB(255, 50, 50)
         btn.BorderSizePixel = 0
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         btn.Text = value and "ON" or "OFF"
         btn.TextSize = 9
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
+
         local state = value
         btn.MouseButton1Click:Connect(function()
             state = not state
-            btn.BackgroundColor3 = state and Color3.fromRGB(80, 220, 160) or Color3.fromRGB(50, 30, 70)
+            btn.BackgroundColor3 = state and Color3.fromRGB(80, 220, 160) or Color3.fromRGB(255, 50, 50)
             btn.Text = state and "ON" or "OFF"
             callback(state)
         end)
@@ -265,6 +311,11 @@ function createMainGUI()
     createToggle("Silent Aim", State.knifeAim, function(v)
         State.knifeAim = v
         toggleKnifeAim()
+    end)
+
+    createToggle("ESP", State.esp, function(v)
+        State.esp = v
+        toggleESP()
     end)
 
     UserInputService.InputBegan:Connect(function(input)
@@ -282,6 +333,7 @@ function createMainGUI()
     end)
 
     if State.knifeAim then toggleKnifeAim() end
+    if State.esp then toggleESP() end
 end
 
 showKeyWindow()
