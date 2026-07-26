@@ -18,106 +18,83 @@ local State = {
     knifeAim = false,
     esp = false,
 }
+local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
+local snowflakes = {}
 
-local screenGui
-local mainFrame
-local openBtn
-local isOpen = false
-
--- ========== KNIFE AIM (Silent Aim) ==========
-getgenv().KnifeConfig = {
-    Enabled = false,
-    HitPart = "Head",
-    FOV = 450
-}
+-- ========== KNIFE AIM ==========
+getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
 local KnifeController = pcall(function()
     return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
 end)
 
 local function getClosestTarget()
-    local bestTarget = nil
-    local bestFOV = getgenv().KnifeConfig.FOV
+    local best, bestFOV = nil, getgenv().KnifeConfig.FOV
     local center = Camera.ViewportSize / 2
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-            local hitPart = player.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
-            if hitPart then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(hitPart.Position)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            local part = plr.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
+            if part then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
                 if onScreen then
-                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                    if dist < bestFOV then
-                        bestTarget = player
-                        bestFOV = dist
-                    end
+                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if d < bestFOV then best, bestFOV = plr, d end
                 end
             end
         end
     end
-    return bestTarget
+    return best
 end
 
 local originalThrow = nil
 local function toggleKnifeAim()
     State.knifeAim = not State.knifeAim
     getgenv().KnifeConfig.Enabled = State.knifeAim
-    if State.knifeAim then
-        if not originalThrow and KnifeController then
-            originalThrow = KnifeController._GetThrowDirection
-            KnifeController._GetThrowDirection = function(self, origin)
-                if getgenv().KnifeConfig.Enabled then
-                    local target = getClosestTarget()
-                    if target and target.Character then
-                        local hitPart = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
-                        if hitPart then
-                            return (hitPart.Position - origin.Position).Unit
-                        end
-                    end
+    if State.knifeAim and not originalThrow and KnifeController then
+        originalThrow = KnifeController._GetThrowDirection
+        KnifeController._GetThrowDirection = function(self, origin)
+            if getgenv().KnifeConfig.Enabled then
+                local target = getClosestTarget()
+                if target and target.Character then
+                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
+                    if part then return (part.Position - origin.Position).Unit end
                 end
-                return originalThrow(self, origin)
             end
+            return originalThrow(self, origin)
         end
-    else
-        if originalThrow and KnifeController then
-            KnifeController._GetThrowDirection = originalThrow
-            originalThrow = nil
-        end
+    elseif not State.knifeAim and originalThrow and KnifeController then
+        KnifeController._GetThrowDirection = originalThrow
+        originalThrow = nil
     end
 end
 
 -- ========== ESP ==========
-local espHighlights = {}
-local espConnections = {}
+local espHighlights, espConnections = {}, {}
 
 local function clearESP()
-    for _, h in ipairs(espHighlights) do
-        if h and h.Parent then h:Destroy() end
-    end
+    for _, h in ipairs(espHighlights) do if h and h.Parent then h:Destroy() end end
     espHighlights = {}
-    for _, c in ipairs(espConnections) do
-        if c then c:Disconnect() end
-    end
+    for _, c in ipairs(espConnections) do if c then c:Disconnect() end end
     espConnections = {}
 end
 
 local function applyESP(player)
     if player == LocalPlayer then return end
-    local function setupHighlight(character)
-        local old = character:FindFirstChild("WezexESP")
+    local function setup(char)
+        local old = char:FindFirstChild("WezexESP")
         if old then old:Destroy() end
         local h = Instance.new("Highlight")
         h.Name = "WezexESP"
-        h.FillColor = Color3.fromRGB(255, 0, 0)
-        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillColor = Color3.fromRGB(255,0,0)
+        h.OutlineColor = Color3.fromRGB(255,255,255)
         h.FillTransparency = 0.4
         h.OutlineTransparency = 0
         h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        h.Parent = character
+        h.Parent = char
         table.insert(espHighlights, h)
     end
-    if player.Character then setupHighlight(player.Character) end
-    local conn = player.CharacterAdded:Connect(setupHighlight)
+    if player.Character then setup(player.Character) end
+    local conn = player.CharacterAdded:Connect(setup)
     table.insert(espConnections, conn)
 end
 
@@ -126,26 +103,62 @@ local function toggleESP()
     if State.esp then
         clearESP()
         for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
-        local conn = Players.PlayerAdded:Connect(applyESP)
-        table.insert(espConnections, conn)
+        table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
     else
         clearESP()
     end
 end
 
+-- ========== РЕАЛИСТИЧНЫЕ СНЕЖИНКИ (ТОЛЬКО В МЕНЮ) ==========
+local function createSnowflakes(parent)
+    -- Удаляем старые снежинки
+    for _, f in ipairs(snowflakes) do if f and f.Parent then f:Destroy() end end
+    snowflakes = {}
+    
+    for i = 1, 25 do
+        local f = Instance.new("Frame", parent)
+        f.Size = UDim2.new(0, math.random(2,6), 0, math.random(2,6))
+        f.Position = UDim2.new(math.random()*0.9, 0, math.random()*0.9, 0)
+        f.BackgroundColor3 = Color3.fromRGB(255,255,255)
+        f.BackgroundTransparency = 0.1 + math.random()*0.3
+        f.BorderSizePixel = 0
+        f.ZIndex = 10
+        f.ClipsDescendants = true
+        Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
+        f.Rotation = math.random(-30,30)
+        local data = {
+            obj = f,
+            speed = 0.1 + math.random()*0.3,
+            drift = 0.002 + math.random()*0.006,
+            phase = math.random()*math.pi*2,
+            startX = f.Position.X.Scale,
+            startY = f.Position.Y.Scale,
+        }
+        table.insert(snowflakes, f)
+        
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if not f or not f.Parent then return end
+            local newY = f.Position.Y.Scale + data.speed * 0.0015
+            if newY > 0.95 then
+                newY = -0.05
+                f.Position = UDim2.new(math.random()*0.9, 0, newY, 0)
+                data.startX = f.Position.X.Scale
+            else
+                local driftX = data.startX + math.sin(tick()*data.drift+data.phase)*0.03
+                f.Position = UDim2.new(driftX, 0, newY, 0)
+            end
+            f.Rotation = f.Rotation + (0.2 + math.random()*0.3)
+        end)
+    end
+end
+
 -- ========== GUI ==========
 local function showKeyWindow()
-    local keyGui = Instance.new("ScreenGui")
+    local keyGui = Instance.new("ScreenGui", CoreGui)
     keyGui.Name = "KeySystem"
-    keyGui.Parent = CoreGui
     keyGui.ResetOnSpawn = false
 
-    local main = Instance.new("Frame", keyGui)
-    main.Size = UDim2.new(1, 0, 1, 0)
-    main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    main.BackgroundTransparency = 0.1
-
-    local panel = Instance.new("Frame", main)
+    local panel = Instance.new("Frame", keyGui)
     panel.Size = UDim2.new(0, 240, 0, 130)
     panel.Position = UDim2.new(0.5, -120, 0.5, -65)
     panel.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
@@ -213,32 +226,18 @@ local function showKeyWindow()
             keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
         end
     end)
-
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then enterBtn.MouseButton1Click:Fire() end
-    end)
-
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then
-            enterBtn.MouseButton1Click:Fire()
-        end
-    end)
+    keyBox.FocusLost:Connect(function(enterPressed) if enterPressed then enterBtn.MouseButton1Click:Fire() end end)
+    UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then enterBtn.MouseButton1Click:Fire() end end)
 end
 
--- ========== ОСНОВНОЕ МЕНЮ ==========
-function createMainGUI()
-    pcall(function()
-        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
-    end)
+local function createMainGUI()
+    pcall(function() if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end end)
 
-    screenGui = Instance.new("ScreenGui")
+    screenGui = Instance.new("ScreenGui", CoreGui)
     screenGui.Name = "WezexHub"
     screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
 
-    -- Кнопка W
     openBtn = Instance.new("TextButton", screenGui)
-    openBtn.Name = "OpenBtn"
     openBtn.Size = UDim2.new(0, 48, 0, 48)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
     openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
@@ -250,7 +249,6 @@ function createMainGUI()
     openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Visible = false
-
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openBtn.Visible = false
@@ -263,7 +261,10 @@ function createMainGUI()
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+    
+    createSnowflakes(mainFrame)
 
     local title = Instance.new("TextLabel", mainFrame)
     title.Size = UDim2.new(1, 0, 0, 26)
@@ -301,7 +302,6 @@ function createMainGUI()
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
         frame.BackgroundTransparency = 0.4
         Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-
         local lbl = Instance.new("TextLabel", frame)
         lbl.Size = UDim2.new(0.5, 0, 1, 0)
         lbl.Position = UDim2.new(0.04, 0, 0, 0)
@@ -311,7 +311,6 @@ function createMainGUI()
         lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
         lbl.Text = label
         lbl.TextXAlignment = Enum.TextXAlignment.Left
-
         local btn = Instance.new("TextButton", frame)
         btn.Size = UDim2.new(0, 44, 0, 18)
         btn.Position = UDim2.new(1, -50, 0.5, -9)
@@ -322,7 +321,6 @@ function createMainGUI()
         btn.TextSize = 9
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
-
         local state = value
         btn.MouseButton1Click:Connect(function()
             state = not state
@@ -336,7 +334,6 @@ function createMainGUI()
         State.knifeAim = v
         toggleKnifeAim()
     end)
-
     createToggle("Player ESP", State.esp, function(v)
         State.esp = v
         toggleESP()
