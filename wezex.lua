@@ -1,4 +1,4 @@
--- Wezex Hub v7 (VISIBILITY FIX + TOUCH DRAG + GLOW)
+-- Wezex Hub v8 (EMERGENCY VISIBILITY FIX)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local KnifeController
 
+-- Полная очистка перед запуском
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -150,7 +151,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== ПЕРЕТАСКИВАНИЕ (МЫШЬ + ТАЧ) ==========
+-- ========== ПЕРЕТАСКИВАНИЕ ==========
 local function makeDraggable(frame, target)
     target = target or frame
     local dragging = false
@@ -288,7 +289,7 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ========== GUI ==========
+-- ========== ОКНО КЛЮЧА ==========
 local function showKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -367,7 +368,7 @@ local function showKeyWindow()
                 keyGui:Destroy()
                 keyGui = nil
             end
-            task.wait(0.1)
+            task.wait(0.15)
             createMainGUI()
         else
             keyBox.Text = ""
@@ -387,6 +388,7 @@ local function showKeyWindow()
     createSnow(panel)
 end
 
+-- ========== ГЛАВНОЕ МЕНЮ ==========
 function createMainGUI()
     pcall(function()
         if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
@@ -398,7 +400,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
 
-    -- КНОПКА ОТКРЫТИЯ
+    -- КНОПКА ОТКРЫТИЯ (ВИДИМА, ЕСЛИ МЕНЮ ЗАКРЫТО)
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -411,7 +413,7 @@ function createMainGUI()
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = false  -- Скрыта, пока меню открыто
+    openBtn.Visible = false  -- Скрыта, пока открыто меню
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
@@ -421,7 +423,7 @@ function createMainGUI()
 
     makeDraggable(openBtn, openBtn)
 
-    -- ОБВОДКА (GLOW)
+    -- ОБВОДКА
     local glowFrame = Instance.new("Frame")
     glowFrame.Size = UDim2.new(0, 240, 0, 175)
     glowFrame.Position = UDim2.new(0.5, -120, 0.5, -87)
@@ -444,9 +446,9 @@ function createMainGUI()
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
-    mainFrame.Visible = true  -- Показываем сразу
+    mainFrame.Visible = true  -- ← ОТОБРАЖАЕМ СРАЗУ
 
-    -- ЗАГОЛОВОК (перетаскиваемый)
+    -- ЗАГОЛОВОК
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 30)
     titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -482,7 +484,7 @@ function createMainGUI()
         isOpen = false
     end)
 
-    -- КОНТЕЙНЕР С АВТО-РАЗМЕЩЕНИЕМ
+    -- КОНТЕЙНЕР
     local content = Instance.new("Frame")
     content.Size = UDim2.new(1, -14, 1, -48)
     content.Position = UDim2.new(0, 7, 0, 40)
@@ -496,7 +498,7 @@ function createMainGUI()
     layout.Padding = UDim.new(0, 6)
     layout.Parent = content
 
-    -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
+    -- ПЕРЕКЛЮЧАТЕЛИ
     local function createToggle(label, stateKey, callback)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(0.95, 0, 0, 32)
@@ -527,8 +529,7 @@ function createMainGUI()
         Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
 
         local function updateButton()
-            local currentState = State[stateKey]
-            if currentState then
+            if State[stateKey] then
                 btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
                 btn.Text = "ON"
             else
@@ -542,28 +543,21 @@ function createMainGUI()
             callback()
             updateButton()
         end)
-
-        return updateButton
     end
 
-    createToggle("ESP (Duels)", "esp", function()
-        toggleESP()
-    end)
+    createToggle("ESP (Duels)", "esp", toggleESP)
+    createToggle("Silent Aim", "knifeAim", toggleKnifeAim)
 
-    createToggle("Silent Aim", "knifeAim", function()
-        toggleKnifeAim()
-    end)
-
-    -- Горячая клавиша ]
+    -- ГОРЯЧАЯ КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
-            if mainFrame.Visible then
+            if mainFrame and mainFrame.Visible then
                 mainFrame.Visible = false
-                openBtn.Visible = true
+                if openBtn then openBtn.Visible = true end
                 isOpen = false
             else
-                mainFrame.Visible = true
-                openBtn.Visible = false
+                if mainFrame then mainFrame.Visible = true end
+                if openBtn then openBtn.Visible = false end
                 isOpen = true
             end
         end
@@ -572,14 +566,20 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
+    -- Принудительное отображение через 0.2 секунды (дубль)
+    task.wait(0.2)
+    if mainFrame then
+        mainFrame.Visible = true
+    end
+    if openBtn then
+        openBtn.Visible = false
+    end
+    isOpen = true
+
     -- Синхронизация состояний
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
-
-    -- ПРИНУДИТЕЛЬНОЕ ОТОБРАЖЕНИЕ МЕНЮ
-    mainFrame.Visible = true
-    openBtn.Visible = false
-    isOpen = true
 end
 
+-- ЗАПУСК
 showKeyWindow()
