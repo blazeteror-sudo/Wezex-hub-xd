@@ -1,4 +1,4 @@
--- Wezex Hub v6 (NOCLIP + INFINITE JUMP)
+-- Wezex Hub v7 (SPIN BOT)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -21,12 +21,15 @@ local State = {
     knifeAim = false,
     noclip = false,
     infJump = false,
+    spin = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
 local noclipConnection = nil
 local infJumpConnection = nil
+local spinConnection = nil
+local spinSpeed = 1.5  -- регулировка скорости вращения
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -195,6 +198,27 @@ local function toggleInfJump()
         if infJumpConnection then
             infJumpConnection:Disconnect()
             infJumpConnection = nil
+        end
+    end
+end
+
+-- ========== SPIN BOT ==========
+local function toggleSpin()
+    State.spin = not State.spin
+    if State.spin then
+        if spinConnection then spinConnection:Disconnect() end
+        spinConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local current = root.Orientation
+                root.Orientation = Vector3.new(current.X, current.Y + spinSpeed, current.Z)
+            end
+        end)
+    else
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
         end
     end
 end
@@ -408,8 +432,8 @@ function createMainGUI()
 
     -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 180)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+    mainFrame.Size = UDim2.new(0, 220, 0, 210)  -- увеличен под 5 функций
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -105)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -525,6 +549,10 @@ function createMainGUI()
         toggleInfJump()
     end)
 
+    createToggle("Spin Bot", "spin", function()
+        toggleSpin()
+    end)
+
     -- ГОРЯЧАЯ КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
@@ -551,6 +579,7 @@ function createMainGUI()
     if State.knifeAim then toggleKnifeAim() end
     if State.noclip then toggleNoclip() end
     if State.infJump then toggleInfJump() end
+    if State.spin then toggleSpin() end
 end
 
 showKeyWindow()
