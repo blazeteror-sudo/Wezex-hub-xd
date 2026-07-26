@@ -24,7 +24,7 @@ local mainFrame
 local openBtn
 local isOpen = false
 
--- ========== KNIFE AIM (твой код) ==========
+-- ========== KNIFE AIM ==========
 getgenv().KnifeConfig = {
     Enabled = false,
     HitPart = "Head",
@@ -133,12 +133,12 @@ local function toggleESP()
     end
 end
 
--- ========== СНЕЖИНКИ (задний фон) ==========
+-- ========== СНЕЖИНКИ ==========
 local function createSnowflakes(parent)
     local snowflakes = {}
-    for i = 1, 40 do
+    for i = 1, 35 do
         local flake = Instance.new("Frame", parent)
-        flake.Size = UDim2.new(0, math.random(2, 6), 0, math.random(2, 6))
+        flake.Size = UDim2.new(0, math.random(2, 5), 0, math.random(2, 5))
         flake.Position = UDim2.new(math.random() * 0.95, 0, math.random() * 0.95, 0)
         flake.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         flake.BackgroundTransparency = 0.2 + math.random() * 0.4
@@ -189,15 +189,15 @@ local function showKeyWindow()
     createSnowflakes(main)
 
     local panel = Instance.new("Frame", main)
-    panel.Size = UDim2.new(0, 240, 0, 140)
-    panel.Position = UDim2.new(0.5, -120, 0.5, -70)
+    panel.Size = UDim2.new(0, 240, 0, 130)
+    panel.Position = UDim2.new(0.5, -120, 0.5, -65)
     panel.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     panel.BackgroundTransparency = 0.3
     panel.BorderSizePixel = 0
     Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
 
     local title = Instance.new("TextLabel", panel)
-    title.Size = UDim2.new(1, 0, 0, 28)
+    title.Size = UDim2.new(1, 0, 0, 26)
     title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
@@ -208,7 +208,7 @@ local function showKeyWindow()
 
     local info = Instance.new("TextLabel", panel)
     info.Size = UDim2.new(1, 0, 0, 16)
-    info.Position = UDim2.new(0, 0, 0, 38)
+    info.Position = UDim2.new(0, 0, 0, 36)
     info.BackgroundTransparency = 1
     info.Font = Enum.Font.Gotham
     info.TextSize = 11
@@ -217,8 +217,8 @@ local function showKeyWindow()
     info.TextXAlignment = Enum.TextXAlignment.Center
 
     local keyBox = Instance.new("TextBox", panel)
-    keyBox.Size = UDim2.new(0.6, 0, 0, 32)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 62)
+    keyBox.Size = UDim2.new(0.6, 0, 0, 30)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 58)
     keyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     keyBox.BackgroundTransparency = 0.3
     keyBox.BorderSizePixel = 0
@@ -232,8 +232,8 @@ local function showKeyWindow()
     keyBox.ClearTextOnFocus = false
 
     local enterBtn = Instance.new("TextButton", panel)
-    enterBtn.Size = UDim2.new(0.4, 0, 0, 32)
-    enterBtn.Position = UDim2.new(0.3, 0, 0, 102)
+    enterBtn.Size = UDim2.new(0.4, 0, 0, 30)
+    enterBtn.Position = UDim2.new(0.3, 0, 0, 94)
     enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     enterBtn.BackgroundTransparency = 0.2
     enterBtn.BorderSizePixel = 0
@@ -279,17 +279,19 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = CoreGui
 
-    -- Кнопка возврата (фиолетовая W)
+    createSnowflakes(screenGui)
+
+    -- Кнопка возврата (W)
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Name = "OpenBtn"
-    openBtn.Size = UDim2.new(0, 50, 0, 50)
+    openBtn.Size = UDim2.new(0, 48, 0, 48)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
     openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
     openBtn.BackgroundTransparency = 0.2
     openBtn.BorderSizePixel = 0
     Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
     openBtn.Text = "W"
-    openBtn.TextSize = 24
+    openBtn.TextSize = 22
     openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Visible = false
@@ -300,19 +302,17 @@ function createMainGUI()
         isOpen = true
     end)
 
-    createSnowflakes(screenGui)
-
     -- Основное меню
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 220, 0, 150)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -75)
+    mainFrame.Size = UDim2.new(0, 200, 0, 130)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
     local title = Instance.new("TextLabel", mainFrame)
-    title.Size = UDim2.new(1, 0, 0, 28)
+    title.Size = UDim2.new(1, 0, 0, 26)
     title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
@@ -322,8 +322,8 @@ function createMainGUI()
     title.TextXAlignment = Enum.TextXAlignment.Center
 
     local closeBtn = Instance.new("TextButton", mainFrame)
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -30, 0, 4)
+    closeBtn.Size = UDim2.new(0, 22, 0, 22)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
     closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
     closeBtn.BorderSizePixel = 0
     Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
@@ -337,13 +337,13 @@ function createMainGUI()
     end)
 
     local content = Instance.new("Frame", mainFrame)
-    content.Size = UDim2.new(1, -12, 1, -48)
-    content.Position = UDim2.new(0, 6, 0, 42)
+    content.Size = UDim2.new(1, -12, 1, -44)
+    content.Position = UDim2.new(0, 6, 0, 40)
     content.BackgroundTransparency = 1
 
     local function createToggle(label, value, callback)
         local frame = Instance.new("Frame", content)
-        frame.Size = UDim2.new(1, 0, 0, 30)
+        frame.Size = UDim2.new(1, 0, 0, 28)
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
         frame.BackgroundTransparency = 0.4
         Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
@@ -359,8 +359,8 @@ function createMainGUI()
         lbl.TextXAlignment = Enum.TextXAlignment.Left
 
         local btn = Instance.new("TextButton", frame)
-        btn.Size = UDim2.new(0, 48, 0, 20)
-        btn.Position = UDim2.new(1, -54, 0.5, -10)
+        btn.Size = UDim2.new(0, 44, 0, 18)
+        btn.Position = UDim2.new(1, -50, 0.5, -9)
         btn.BackgroundColor3 = value and Color3.fromRGB(80, 220, 160) or Color3.fromRGB(50, 30, 70)
         btn.BorderSizePixel = 0
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
@@ -381,7 +381,7 @@ function createMainGUI()
     createToggle("Knife Aim", State.knifeAim, function(v)
         State.knifeAim = v
         toggleKnifeAim()
-    end) Тит
+    end)
 
     createToggle("Player ESP", State.esp, function(v)
         State.esp = v
