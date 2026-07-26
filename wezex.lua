@@ -19,9 +19,8 @@ local State = {
     esp = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
-local snowflakes = {}
 
--- ========== KNIFE AIM (Silent Aim) ==========
+-- ========== SILENT AIM (ТВОЙ КОД, БЕЗ ПОДСВЕТКИ) ==========
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
 local KnifeController = pcall(function()
@@ -68,7 +67,7 @@ local function toggleKnifeAim()
     end
 end
 
--- ========== ESP ==========
+-- ========== ESP (ОТДЕЛЬНАЯ ФУНКЦИЯ) ==========
 local espHighlights, espConnections = {}, {}
 
 local function clearESP()
@@ -85,8 +84,12 @@ local function applyESP(player)
         if old then old:Destroy() end
         local h = Instance.new("Highlight")
         h.Name = "WezexESP"
-        h.FillColor = Color3.fromRGB(255,0,0)
-        h.OutlineColor = Color3.fromRGB(255,255,255)
+        if player.Team == LocalPlayer.Team then
+            h.FillColor = Color3.fromRGB(0, 255, 0)
+        else
+            h.FillColor = Color3.fromRGB(255, 0, 0)
+        end
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
         h.FillTransparency = 0.4
         h.OutlineTransparency = 0
         h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -106,38 +109,6 @@ local function toggleESP()
         table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
     else
         clearESP()
-    end
-end
-
--- ========== СНЕЖИНКИ ==========
-local function createSnowflakes(parent)
-    for _, f in ipairs(snowflakes) do if f and f.Parent then f:Destroy() end end
-    snowflakes = {}
-    for i = 1, 25 do
-        local f = Instance.new("Frame", parent)
-        f.Size = UDim2.new(0, math.random(2,6), 0, math.random(2,6))
-        f.Position = UDim2.new(math.random()*0.9, 0, math.random()*0.9, 0)
-        f.BackgroundColor3 = Color3.fromRGB(255,255,255)
-        f.BackgroundTransparency = 0.1 + math.random()*0.3
-        f.BorderSizePixel = 0
-        f.ZIndex = 10
-        f.ClipsDescendants = true
-        Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
-        f.Rotation = math.random(-30,30)
-        local data = {obj=f, speed=0.1+math.random()*0.3, drift=0.002+math.random()*0.006, phase=math.random()*math.pi*2, startX=f.Position.X.Scale}
-        table.insert(snowflakes, f)
-        RunService.RenderStepped:Connect(function()
-            if not f or not f.Parent then return end
-            local newY = f.Position.Y.Scale + data.speed * 0.0015
-            if newY > 0.95 then
-                newY = -0.05
-                f.Position = UDim2.new(math.random()*0.9, 0, newY, 0)
-                data.startX = f.Position.X.Scale
-            else
-                f.Position = UDim2.new(data.startX + math.sin(tick()*data.drift+data.phase)*0.03, 0, newY, 0)
-            end
-            f.Rotation = f.Rotation + (0.2 + math.random()*0.3)
-        end)
     end
 end
 
@@ -245,15 +216,12 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 130)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
+    mainFrame.Size = UDim2.new(0, 200, 0, 110)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
-    mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
-
-    createSnowflakes(mainFrame)
 
     local title = Instance.new("TextLabel", mainFrame)
     title.Size = UDim2.new(1, 0, 0, 26)
@@ -319,12 +287,12 @@ function createMainGUI()
         end)
     end
 
-    createToggle("Silent Aim (Knife)", State.knifeAim, function(v)
+    createToggle("Silent Aim", State.knifeAim, function(v)
         State.knifeAim = v
         toggleKnifeAim()
     end)
 
-    createToggle("Player ESP", State.esp, function(v)
+    createToggle("ESP (зел/крас)", State.esp, function(v)
         State.esp = v
         toggleESP()
     end)
