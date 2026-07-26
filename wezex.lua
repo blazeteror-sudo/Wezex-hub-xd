@@ -1,4 +1,4 @@
--- Wezex Hub v5.1 (SPEED FIXED)
+-- Wezex Hub v6 (NOCLIP + INFINITE JUMP)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -19,13 +19,13 @@ local CORRECT_KEY = "38399923"
 local State = {
     esp = false,
     knifeAim = false,
-    speed = false,
+    noclip = false,
     infJump = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
-local speedConnection = nil
+local noclipConnection = nil
 local infJumpConnection = nil
 
 -- ========== ESP ==========
@@ -149,28 +149,33 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== SPEED (FIXED) ==========
-local function toggleSpeed()
-    State.speed = not State.speed
-    if State.speed then
-        if speedConnection then speedConnection:Disconnect() end
-        speedConnection = RunService.Stepped:Connect(function()
+-- ========== NOCLIP ==========
+local function toggleNoclip()
+    State.noclip = not State.noclip
+    if State.noclip then
+        if noclipConnection then noclipConnection:Disconnect() end
+        noclipConnection = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                local hum = char.Humanoid
-                if hum.WalkSpeed ~= 32 then
-                    hum.WalkSpeed = 32
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
                 end
             end
         end)
     else
-        if speedConnection then
-            speedConnection:Disconnect()
-            speedConnection = nil
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
         end
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 16
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
         end
     end
 end
@@ -512,8 +517,8 @@ function createMainGUI()
         toggleKnifeAim()
     end)
 
-    createToggle("Speed", "speed", function()
-        toggleSpeed()
+    createToggle("Noclip", "noclip", function()
+        toggleNoclip()
     end)
 
     createToggle("Infinity Jump", "infJump", function()
@@ -544,7 +549,7 @@ function createMainGUI()
 
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
-    if State.speed then toggleSpeed() end
+    if State.noclip then toggleNoclip() end
     if State.infJump then toggleInfJump() end
 end
 
