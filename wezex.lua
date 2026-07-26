@@ -1,4 +1,4 @@
--- Wezex Hub v5 (TOUCH DRAG + GLOW + FINAL UI)
+-- Wezex Hub v6 (LAUNCH FIX + TOUCH DRAG + GLOW)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -22,6 +22,7 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
+local keyGui = nil -- сохраняем ссылку на окно ключа
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -155,7 +156,6 @@ local function makeDraggable(frame, target)
     local dragging = false
     local dragStart, startPos
 
-    -- МЫШЬ
     frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -182,7 +182,6 @@ local function makeDraggable(frame, target)
         end
     end)
 
-    -- ТАЧ (палец)
     frame.TouchBegan:Connect(function(touch)
         if touch.UserInputType == Enum.UserInputType.Touch then
             dragging = true
@@ -295,7 +294,7 @@ local function showKeyWindow()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
 
-    local keyGui = Instance.new("ScreenGui")
+    keyGui = Instance.new("ScreenGui")
     keyGui.Name = "KeySystem"
     keyGui.Parent = CoreGui
     keyGui.ResetOnSpawn = false
@@ -364,7 +363,13 @@ local function showKeyWindow()
 
     local function checkKey()
         if keyBox.Text == CORRECT_KEY then
-            keyGui:Destroy()
+            -- Уничтожаем окно ключа
+            if keyGui then
+                keyGui:Destroy()
+                keyGui = nil
+            end
+            -- Небольшая задержка перед созданием главного меню
+            task.wait(0.1)
             createMainGUI()
         else
             keyBox.Text = ""
@@ -385,6 +390,7 @@ local function showKeyWindow()
 end
 
 function createMainGUI()
+    -- Уничтожаем старые GUI
     pcall(function()
         if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     end)
@@ -395,7 +401,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
 
-    -- КНОПКА ОТКРЫТИЯ (перетаскиваемая)
+    -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -408,7 +414,7 @@ function createMainGUI()
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = false
+    openBtn.Visible = true  -- Меняем на true, чтобы кнопка появлялась сразу
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
@@ -441,6 +447,7 @@ function createMainGUI()
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
+    mainFrame.Visible = false  -- Изначально скрыто
 
     -- ЗАГОЛОВОК (перетаскиваемый)
     local titleBar = Instance.new("Frame")
@@ -568,8 +575,14 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
+    -- Синхронизация состояний (если были включены)
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
+
+    -- Автоматически показываем меню после создания
+    mainFrame.Visible = true
+    openBtn.Visible = false
+    isOpen = true
 end
 
 showKeyWindow()
