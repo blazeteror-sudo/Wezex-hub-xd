@@ -1,4 +1,4 @@
--- Wezex Hub v8 (TELEPORT TO PLAYERS)
+-- Wezex Hub v8.1 (EMERGENCY MENU FIX)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -201,7 +201,7 @@ local function toggleInfJump()
     end
 end
 
--- ========== TELEPORT TO PLAYERS ==========
+-- ========== TELEPORT ==========
 local function teleportToPlayer(player)
     if not player or not player.Character then return end
     local targetPart = player.Character:FindFirstChild("HumanoidRootPart") or player.Character:FindFirstChild("Head")
@@ -210,17 +210,22 @@ local function teleportToPlayer(player)
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local root = char.HumanoidRootPart
     
-    -- Плавный телепорт через Tween
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Linear)
     local tween = TweenService:Create(root, tweenInfo, {Position = targetPart.Position + Vector3.new(0, 3, 0)})
     tween:Play()
 end
 
-local function createTeleportList()
-    -- Уничтожаем старый список, если есть
+local function closeTeleportList()
     if teleportFrame then
         teleportFrame:Destroy()
         teleportFrame = nil
+    end
+end
+
+local function createTeleportList()
+    closeTeleportList()
+    
+    if not screenGui then
         return
     end
     
@@ -255,12 +260,7 @@ local function createTeleportList()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Parent = teleportFrame
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-    closeBtn.MouseButton1Click:Connect(function()
-        if teleportFrame then
-            teleportFrame:Destroy()
-            teleportFrame = nil
-        end
-    end)
+    closeBtn.MouseButton1Click:Connect(closeTeleportList)
     
     local listContainer = Instance.new("Frame")
     listContainer.Size = UDim2.new(1, -10, 1, -46)
@@ -275,9 +275,7 @@ local function createTeleportList()
     layout.Padding = UDim.new(0, 4)
     layout.Parent = listContainer
     
-    -- Добавляем кнопки для каждого игрока
-    local players = Players:GetPlayers()
-    for _, plr in ipairs(players) do
+    for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(0.9, 0, 0, 28)
@@ -293,10 +291,7 @@ local function createTeleportList()
             
             btn.MouseButton1Click:Connect(function()
                 teleportToPlayer(plr)
-                if teleportFrame then
-                    teleportFrame:Destroy()
-                    teleportFrame = nil
-                end
+                closeTeleportList()
             end)
         end
     end
@@ -304,8 +299,7 @@ end
 
 local function toggleTeleport()
     if teleportFrame and teleportFrame.Parent then
-        teleportFrame:Destroy()
-        teleportFrame = nil
+        closeTeleportList()
     else
         createTeleportList()
     end
@@ -496,6 +490,7 @@ function createMainGUI()
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
+    screenGui.Enabled = true
 
     -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
@@ -575,4 +570,10 @@ function createMainGUI()
     layout.Parent = content
 
     -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
-    local funct
+    local function createToggle(label, stateKey, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 28)
+        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+        frame.BackgroundTransparency = 0.4
+        frame.Parent = content
+        
