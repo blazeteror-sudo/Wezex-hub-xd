@@ -1,4 +1,4 @@
--- Wezex Hub v5 (SPEED + INFINITE JUMP)
+-- Wezex Hub v5.1 (SPEED FIXED)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -149,16 +149,18 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== SPEED ==========
+-- ========== SPEED (FIXED) ==========
 local function toggleSpeed()
     State.speed = not State.speed
     if State.speed then
         if speedConnection then speedConnection:Disconnect() end
-        speedConnection = RunService.Heartbeat:Connect(function()
+        speedConnection = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
                 local hum = char.Humanoid
-                hum.WalkSpeed = 32  -- можно изменить значение (16 — стандарт, 32 — вдвое быстрее)
+                if hum.WalkSpeed ~= 32 then
+                    hum.WalkSpeed = 32
+                end
             end
         end)
     else
@@ -166,7 +168,6 @@ local function toggleSpeed()
             speedConnection:Disconnect()
             speedConnection = nil
         end
-        -- Сбрасываем скорость
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
             char.Humanoid.WalkSpeed = 16
@@ -402,7 +403,7 @@ function createMainGUI()
 
     -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 180)  -- Увеличен под новые функции
+    mainFrame.Size = UDim2.new(0, 220, 0, 180)
     mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
@@ -503,7 +504,6 @@ function createMainGUI()
         end)
     end
 
-    -- СОЗДАЁМ ВСЕ ПЕРЕКЛЮЧАТЕЛИ
     createToggle("ESP (Duels)", "esp", function()
         toggleESP()
     end)
