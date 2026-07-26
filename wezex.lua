@@ -109,12 +109,10 @@ local function toggleESP()
     end
 end
 
--- ========== РЕАЛИСТИЧНЫЕ СНЕЖИНКИ (ТОЛЬКО В МЕНЮ) ==========
+-- ========== РЕАЛИСТИЧНЫЕ СНЕЖИНКИ ==========
 local function createSnowflakes(parent)
-    -- Удаляем старые снежинки
     for _, f in ipairs(snowflakes) do if f and f.Parent then f:Destroy() end end
     snowflakes = {}
-    
     for i = 1, 25 do
         local f = Instance.new("Frame", parent)
         f.Size = UDim2.new(0, math.random(2,6), 0, math.random(2,6))
@@ -135,8 +133,7 @@ local function createSnowflakes(parent)
             startY = f.Position.Y.Scale,
         }
         table.insert(snowflakes, f)
-        
-        game:GetService("RunService").RenderStepped:Connect(function()
+        RunService.RenderStepped:Connect(function()
             if not f or not f.Parent then return end
             local newY = f.Position.Y.Scale + data.speed * 0.0015
             if newY > 0.95 then
@@ -152,7 +149,7 @@ local function createSnowflakes(parent)
     end
 end
 
--- ========== GUI ==========
+-- ========== КЛЮЧ ==========
 local function showKeyWindow()
     local keyGui = Instance.new("ScreenGui", CoreGui)
     keyGui.Name = "KeySystem"
@@ -230,13 +227,15 @@ local function showKeyWindow()
     UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then enterBtn.MouseButton1Click:Fire() end end)
 end
 
-local function createMainGUI()
+-- ========== ОСНОВНОЕ МЕНЮ ==========
+function createMainGUI()
     pcall(function() if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end end)
 
     screenGui = Instance.new("ScreenGui", CoreGui)
     screenGui.Name = "WezexHub"
     screenGui.ResetOnSpawn = false
 
+    -- Кнопка W
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Size = UDim2.new(0, 48, 0, 48)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -263,7 +262,7 @@ local function createMainGUI()
     mainFrame.BorderSizePixel = 0
     mainFrame.ClipsDescendants = true
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
-    
+
     createSnowflakes(mainFrame)
 
     local title = Instance.new("TextLabel", mainFrame)
