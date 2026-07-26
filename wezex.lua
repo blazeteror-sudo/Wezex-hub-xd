@@ -1,18 +1,21 @@
--- Wezex Hub v8 (EMERGENCY VISIBILITY FIX)
+-- Wezex Hub v9 (FORCE VISIBILITY + PLAYER GUI)
 -- KEY: 38399923
 
-local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
 local KnifeController
 
--- Полная очистка перед запуском
+-- Используем PlayerGui для надёжности
+local GUI_PARENT = PlayerGui
+
 pcall(function()
-    if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
-    if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    if GUI_PARENT:FindFirstChild("WezexHub") then GUI_PARENT.WezexHub:Destroy() end
+    if GUI_PARENT:FindFirstChild("KeySystem") then GUI_PARENT.KeySystem:Destroy() end
 end)
 
 local CORRECT_KEY = "38399923"
@@ -292,12 +295,12 @@ end
 -- ========== ОКНО КЛЮЧА ==========
 local function showKeyWindow()
     pcall(function()
-        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+        if GUI_PARENT:FindFirstChild("KeySystem") then GUI_PARENT.KeySystem:Destroy() end
     end)
 
     keyGui = Instance.new("ScreenGui")
     keyGui.Name = "KeySystem"
-    keyGui.Parent = CoreGui
+    keyGui.Parent = GUI_PARENT
     keyGui.ResetOnSpawn = false
     keyGui.IgnoreGuiInset = true
 
@@ -368,7 +371,7 @@ local function showKeyWindow()
                 keyGui:Destroy()
                 keyGui = nil
             end
-            task.wait(0.15)
+            task.wait(0.1)
             createMainGUI()
         else
             keyBox.Text = ""
@@ -391,16 +394,16 @@ end
 -- ========== ГЛАВНОЕ МЕНЮ ==========
 function createMainGUI()
     pcall(function()
-        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
+        if GUI_PARENT:FindFirstChild("WezexHub") then GUI_PARENT.WezexHub:Destroy() end
     end)
 
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "WezexHub"
-    screenGui.Parent = CoreGui
+    screenGui.Parent = GUI_PARENT
     screenGui.ResetOnSpawn = false
     screenGui.IgnoreGuiInset = true
 
-    -- КНОПКА ОТКРЫТИЯ (ВИДИМА, ЕСЛИ МЕНЮ ЗАКРЫТО)
+    -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -413,7 +416,7 @@ function createMainGUI()
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = false  -- Скрыта, пока открыто меню
+    openBtn.Visible = false
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
@@ -446,7 +449,7 @@ function createMainGUI()
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
-    mainFrame.Visible = true  -- ← ОТОБРАЖАЕМ СРАЗУ
+    mainFrame.Visible = true
 
     -- ЗАГОЛОВОК
     local titleBar = Instance.new("Frame")
@@ -566,17 +569,22 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
-    -- Принудительное отображение через 0.2 секунды (дубль)
-    task.wait(0.2)
+    -- ПРИНУДИТЕЛЬНОЕ ОТОБРАЖЕНИЕ
+    task.wait(0.3)
     if mainFrame then
         mainFrame.Visible = true
+        mainFrame.ClipsDescendants = true
     end
     if openBtn then
         openBtn.Visible = false
     end
+    if screenGui then
+        screenGui.Enabled = true
+        screenGui.ResetOnSpawn = false
+        screenGui.IgnoreGuiInset = true
+    end
     isOpen = true
 
-    -- Синхронизация состояний
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
 end
