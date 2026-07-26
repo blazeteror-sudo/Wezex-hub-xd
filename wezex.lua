@@ -1,4 +1,4 @@
--- Wezex Hub Final by @Fanqwezex
+-- Wezex Hub by @Fanqwezex
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -16,11 +16,10 @@ end)
 local CORRECT_KEY = "38399923"
 local State = {
     knifeAim = false,
-    esp = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 
--- ========== SILENT AIM (ТВОЙ КОД, БЕЗ ПОДСВЕТКИ) ==========
+-- ========== SILENT AIM (ТВОЙ КОД) ==========
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
 local KnifeController = pcall(function()
@@ -64,51 +63,6 @@ local function toggleKnifeAim()
     elseif not State.knifeAim and originalThrow and KnifeController then
         KnifeController._GetThrowDirection = originalThrow
         originalThrow = nil
-    end
-end
-
--- ========== ESP (ОТДЕЛЬНАЯ ФУНКЦИЯ) ==========
-local espHighlights, espConnections = {}, {}
-
-local function clearESP()
-    for _, h in ipairs(espHighlights) do if h and h.Parent then h:Destroy() end end
-    espHighlights = {}
-    for _, c in ipairs(espConnections) do if c then c:Disconnect() end end
-    espConnections = {}
-end
-
-local function applyESP(player)
-    if player == LocalPlayer then return end
-    local function setup(char)
-        local old = char:FindFirstChild("WezexESP")
-        if old then old:Destroy() end
-        local h = Instance.new("Highlight")
-        h.Name = "WezexESP"
-        if player.Team == LocalPlayer.Team then
-            h.FillColor = Color3.fromRGB(0, 255, 0)
-        else
-            h.FillColor = Color3.fromRGB(255, 0, 0)
-        end
-        h.OutlineColor = Color3.fromRGB(255, 255, 255)
-        h.FillTransparency = 0.4
-        h.OutlineTransparency = 0
-        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        h.Parent = char
-        table.insert(espHighlights, h)
-    end
-    if player.Character then setup(player.Character) end
-    local conn = player.CharacterAdded:Connect(setup)
-    table.insert(espConnections, conn)
-end
-
-local function toggleESP()
-    State.esp = not State.esp
-    if State.esp then
-        clearESP()
-        for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
-        table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
-    else
-        clearESP()
     end
 end
 
@@ -216,8 +170,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 110)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
+    mainFrame.Size = UDim2.new(0, 200, 0, 80)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -40)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -292,11 +246,6 @@ function createMainGUI()
         toggleKnifeAim()
     end)
 
-    createToggle("ESP (зел/крас)", State.esp, function(v)
-        State.esp = v
-        toggleESP()
-    end)
-
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
             if mainFrame.Visible then
@@ -312,7 +261,6 @@ function createMainGUI()
     end)
 
     if State.knifeAim then toggleKnifeAim() end
-    if State.esp then toggleESP() end
 end
 
 showKeyWindow()
