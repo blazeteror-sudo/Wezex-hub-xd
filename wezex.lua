@@ -1,4 +1,4 @@
--- Wezex Hub v8.1 (EMERGENCY MENU FIX)
+-- Wezex Hub v4.1 + TELEPORT (SIMPLE)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,7 +8,6 @@ local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local KnifeController
-local TweenService = game:GetService("TweenService")
 
 -- Очистка
 pcall(function()
@@ -201,37 +200,26 @@ local function toggleInfJump()
     end
 end
 
--- ========== TELEPORT ==========
+-- ========== TELEPORT (ПРОСТОЙ) ==========
 local function teleportToPlayer(player)
     if not player or not player.Character then return end
-    local targetPart = player.Character:FindFirstChild("HumanoidRootPart") or player.Character:FindFirstChild("Head")
-    if not targetPart then return end
+    local target = player.Character:FindFirstChild("HumanoidRootPart")
+    if not target then return end
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local root = char.HumanoidRootPart
-    
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(root, tweenInfo, {Position = targetPart.Position + Vector3.new(0, 3, 0)})
-    tween:Play()
+    char.HumanoidRootPart.CFrame = target.CFrame + Vector3.new(0, 3, 0)
 end
 
-local function closeTeleportList()
+local function openTeleportList()
     if teleportFrame then
         teleportFrame:Destroy()
         teleportFrame = nil
-    end
-end
-
-local function createTeleportList()
-    closeTeleportList()
-    
-    if not screenGui then
         return
     end
     
     teleportFrame = Instance.new("Frame")
-    teleportFrame.Size = UDim2.new(0, 180, 0, 250)
-    teleportFrame.Position = UDim2.new(0.5, -90, 0.5, -125)
+    teleportFrame.Size = UDim2.new(0, 160, 0, 200)
+    teleportFrame.Position = UDim2.new(0.5, -80, 0.5, -100)
     teleportFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     teleportFrame.BackgroundTransparency = 0.1
     teleportFrame.BorderSizePixel = 0
@@ -240,7 +228,7 @@ local function createTeleportList()
     teleportFrame.ClipsDescendants = true
     
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Size = UDim2.new(1, 0, 0, 28)
     title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
@@ -260,25 +248,30 @@ local function createTeleportList()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Parent = teleportFrame
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-    closeBtn.MouseButton1Click:Connect(closeTeleportList)
+    closeBtn.MouseButton1Click:Connect(function()
+        if teleportFrame then
+            teleportFrame:Destroy()
+            teleportFrame = nil
+        end
+    end)
     
-    local listContainer = Instance.new("Frame")
-    listContainer.Size = UDim2.new(1, -10, 1, -46)
-    listContainer.Position = UDim2.new(0, 5, 0, 40)
-    listContainer.BackgroundTransparency = 1
-    listContainer.Parent = teleportFrame
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -10, 1, -40)
+    container.Position = UDim2.new(0, 5, 0, 36)
+    container.BackgroundTransparency = 1
+    container.Parent = teleportFrame
     
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.VerticalAlignment = Enum.VerticalAlignment.Top
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.Padding = UDim.new(0, 4)
-    layout.Parent = listContainer
+    layout.Parent = container
     
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(0.9, 0, 0, 28)
+            btn.Size = UDim2.new(0.9, 0, 0, 26)
             btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
             btn.BackgroundTransparency = 0.3
             btn.BorderSizePixel = 0
@@ -286,22 +279,17 @@ local function createTeleportList()
             btn.TextSize = 12
             btn.TextColor3 = Color3.fromRGB(220, 210, 255)
             btn.Font = Enum.Font.GothamBold
-            btn.Parent = listContainer
+            btn.Parent = container
             Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
             
             btn.MouseButton1Click:Connect(function()
                 teleportToPlayer(plr)
-                closeTeleportList()
+                if teleportFrame then
+                    teleportFrame:Destroy()
+                    teleportFrame = nil
+                end
             end)
         end
-    end
-end
-
-local function toggleTeleport()
-    if teleportFrame and teleportFrame.Parent then
-        closeTeleportList()
-    else
-        createTeleportList()
     end
 end
 
@@ -476,104 +464,3 @@ local function showKeyWindow()
     keyBox.FocusLost:Connect(function(enterPressed) if enterPressed then checkKey() end end)
     UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then checkKey() end end)
 
-    task.wait(0.05)
-    createSnow(panel)
-end
-
-function createMainGUI()
-    pcall(function()
-        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
-    end)
-
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "WezexHub"
-    screenGui.Parent = CoreGui
-    screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
-    screenGui.Enabled = true
-
-    -- КНОПКА ОТКРЫТИЯ
-    openBtn = Instance.new("TextButton")
-    openBtn.Size = UDim2.new(0, 50, 0, 50)
-    openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
-    openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
-    openBtn.BackgroundTransparency = 0.15
-    openBtn.BorderSizePixel = 0
-    openBtn.Text = "W"
-    openBtn.TextSize = 24
-    openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
-    openBtn.Font = Enum.Font.GothamBold
-    openBtn.Parent = screenGui
-    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = false
-
-    openBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = true
-        openBtn.Visible = false
-        isOpen = true
-    end)
-
-    -- ОСНОВНОЕ МЕНЮ
-    mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 210)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -105)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = screenGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
-    mainFrame.ClipsDescendants = true
-    mainFrame.Visible = true
-
-    -- ЗАГОЛОВОК
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 4)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBlack
-    title.TextSize = 18
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
-    title.Text = "❄️ Wezex Hub"
-    title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = mainFrame
-
-    -- Кнопка закрытия
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -30, 0, 4)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "✕"
-    closeBtn.TextSize = 14
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Parent = mainFrame
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-
-    closeBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        openBtn.Visible = true
-        isOpen = false
-    end)
-
-    -- КОНТЕЙНЕР С АВТО-РАЗМЕЩЕНИЕМ
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -14, 1, -48)
-    content.Position = UDim2.new(0, 7, 0, 40)
-    content.BackgroundTransparency = 1
-    content.Parent = mainFrame
-
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.VerticalAlignment = Enum.VerticalAlignment.Top
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 6)
-    layout.Parent = content
-
-    -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
-    local function createToggle(label, stateKey, callback)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 28)
-        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-        frame.BackgroundTransparency = 0.4
-        frame.Parent = content
-        
