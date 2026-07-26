@@ -1,18 +1,21 @@
--- Wezex Hub v9 (FORCE VISIBILITY + PLAYER GUI)
+-- Wezex Hub FINAL (SINGLE GUI + FORCE VISIBLE)
 -- KEY: 38399923
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local KnifeController
 
--- Используем PlayerGui для надёжности
-local GUI_PARENT = PlayerGui
+-- Определяем родителя
+local GUI_PARENT = CoreGui or (LocalPlayer and LocalPlayer.PlayerGui)
+if not GUI_PARENT then
+    error("Не найден CoreGui или PlayerGui")
+end
 
+-- Очистка
 pcall(function()
     if GUI_PARENT:FindFirstChild("WezexHub") then GUI_PARENT.WezexHub:Destroy() end
     if GUI_PARENT:FindFirstChild("KeySystem") then GUI_PARENT.KeySystem:Destroy() end
@@ -26,7 +29,8 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
-local keyGui = nil
+local keyPanel = nil
+local keyBox = nil
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -160,22 +164,18 @@ local function makeDraggable(frame, target)
     local dragging = false
     local dragStart, startPos
 
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = target.Position
-        end
-    end)
+    local function startDrag(input)
+        dragging = true
+        dragStart = input.Position
+        startPos = target.Position
+    end
 
-    frame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
+    local function endDrag()
+        dragging = false
+    end
 
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    local function moveDrag(input)
+        if dragging then
             local delta = input.Position - dragStart
             target.Position = UDim2.new(
                 startPos.X.Scale,
@@ -184,31 +184,29 @@ local function makeDraggable(frame, target)
                 startPos.Y.Offset + delta.Y
             )
         end
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            startDrag(input)
+        end
+    end)
+    frame.InputEnded:Connect(endDrag)
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            moveDrag(input)
+        end
     end)
 
     frame.TouchBegan:Connect(function(touch)
         if touch.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = touch.Position
-            startPos = target.Position
+            startDrag(touch)
         end
     end)
-
-    frame.TouchEnded:Connect(function(touch)
-        if touch.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
+    frame.TouchEnded:Connect(endDrag)
     UserInputService.TouchMoved:Connect(function(touch)
-        if dragging and touch.UserInputType == Enum.UserInputType.Touch then
-            local delta = touch.Position - dragStart
-            target.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+        if touch.UserInputType == Enum.UserInputType.Touch then
+            moveDrag(touch)
         end
     end)
 end
@@ -292,27 +290,27 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ========== ОКНО КЛЮЧА ==========
-local function showKeyWindow()
-    pcall(function()
-        if GUI_PARENT:FindFirstChild("KeySystem") then GUI_PARENT.KeySystem:Destroy() end
-    end)
+-- ========== ОСНОВНОЙ ГУИ ==========
+function createGUI()
+    -- Создаём единый ScreenGui
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "WezexHub"
+    screenGui.Parent = GUI_PARENT
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Enabled = true
 
-    keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.Parent = GUI_PARENT
-    keyGui.ResetOnSpawn = false
-    keyGui.IgnoreGuiInset = true
-
-    local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
-    panel.BorderSizePixel = 0
-    panel.Parent = keyGui
+    -- ====== ПАНЕЛЬ КЛЮЧА ======
+    keyPanel = Instance.new("Frame")
+    keyPanel.Size = UDim2.new(0, 260, 0, 150)
+    keyPanel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    keyPanel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    keyPanel.BackgroundTransparency = 0.15
+    keyPanel.BorderSizePixel = 0
+    keyPanel.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
-    panel.ClipsDescendants = true
+    keyPanel.ClipsDescendants = true
+    keyPanel.Visible = true
 
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
@@ -323,7 +321,7 @@ local function showKeyWindow()
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "❄️ Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = panel
+    title.Parent = keyPanel
 
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, 0, 0, 18)
@@ -334,9 +332,9 @@ local function showKeyWindow()
     info.TextColor3 = Color3.fromRGB(160, 160, 200)
     info.Text = "Введите ключ доступа"
     info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = panel
+    info.Parent = keyPanel
 
-    local keyBox = Instance.new("TextBox")
+    keyBox = Instance.new("TextBox")
     keyBox.Size = UDim2.new(0.6, 0, 0, 34)
     keyBox.Position = UDim2.new(0.2, 0, 0, 66)
     keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
@@ -349,7 +347,7 @@ local function showKeyWindow()
     keyBox.PlaceholderText = "Ключ"
     keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
     keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
+    keyBox.Parent = keyPanel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
     local enterBtn = Instance.new("TextButton")
@@ -362,17 +360,25 @@ local function showKeyWindow()
     enterBtn.TextSize = 16
     enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
+    enterBtn.Parent = keyPanel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
+    -- Снег в окне ключа
+    task.wait(0.05)
+    createSnow(keyPanel)
+
+    -- ====== ФУНКЦИЯ ПРОВЕРКИ КЛЮЧА ======
     local function checkKey()
         if keyBox.Text == CORRECT_KEY then
-            if keyGui then
-                keyGui:Destroy()
-                keyGui = nil
+            -- Скрываем панель ключа
+            if keyPanel then
+                keyPanel.Visible = false
+                keyPanel.Parent = nil
+                keyPanel = nil
             end
+            -- Создаём главное меню
             task.wait(0.1)
-            createMainGUI()
+            createMainMenu()
         else
             keyBox.Text = ""
             keyBox.PlaceholderText = "Неверно!"
@@ -384,24 +390,31 @@ local function showKeyWindow()
     end
 
     enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed) if enterPressed then checkKey() end end)
-    UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then checkKey() end end)
-
-    task.wait(0.05)
-    createSnow(panel)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
+    end)
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
+    end)
 end
 
 -- ========== ГЛАВНОЕ МЕНЮ ==========
-function createMainGUI()
+function createMainMenu()
+    -- Убеждаемся, что старый GUI удалён
     pcall(function()
-        if GUI_PARENT:FindFirstChild("WezexHub") then GUI_PARENT.WezexHub:Destroy() end
+        if GUI_PARENT:FindFirstChild("WezexHub") and GUI_PARENT.WezexHub ~= screenGui then
+            GUI_PARENT.WezexHub:Destroy()
+        end
     end)
 
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "WezexHub"
-    screenGui.Parent = GUI_PARENT
-    screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
+    if not screenGui or not screenGui.Parent then
+        screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "WezexHub"
+        screenGui.Parent = GUI_PARENT
+        screenGui.ResetOnSpawn = false
+        screenGui.IgnoreGuiInset = true
+        screenGui.Enabled = true
+    end
 
     -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
@@ -417,14 +430,13 @@ function createMainGUI()
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
     openBtn.Visible = false
+    makeDraggable(openBtn, openBtn)
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openBtn.Visible = false
         isOpen = true
     end)
-
-    makeDraggable(openBtn, openBtn)
 
     -- ОБВОДКА
     local glowFrame = Instance.new("Frame")
@@ -566,23 +578,14 @@ function createMainGUI()
         end
     end)
 
+    -- СНЕГ
     task.wait(0.05)
     createSnow(mainFrame)
 
     -- ПРИНУДИТЕЛЬНОЕ ОТОБРАЖЕНИЕ
-    task.wait(0.3)
-    if mainFrame then
-        mainFrame.Visible = true
-        mainFrame.ClipsDescendants = true
-    end
-    if openBtn then
-        openBtn.Visible = false
-    end
-    if screenGui then
-        screenGui.Enabled = true
-        screenGui.ResetOnSpawn = false
-        screenGui.IgnoreGuiInset = true
-    end
+    screenGui.Enabled = true
+    mainFrame.Visible = true
+    openBtn.Visible = false
     isOpen = true
 
     if State.esp then toggleESP() end
@@ -590,4 +593,4 @@ function createMainGUI()
 end
 
 -- ЗАПУСК
-showKeyWindow()
+createGUI()
