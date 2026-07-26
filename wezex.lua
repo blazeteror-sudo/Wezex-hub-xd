@@ -1,4 +1,4 @@
--- Wezex Hub v4.1 (FIXED UI + SNOW)
+-- Wezex Hub v5 (SPEED + INFINITE JUMP)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -19,10 +19,14 @@ local CORRECT_KEY = "38399923"
 local State = {
     esp = false,
     knifeAim = false,
+    speed = false,
+    infJump = false,
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
+local speedConnection = nil
+local infJumpConnection = nil
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -143,6 +147,50 @@ local function toggleKnifeAim()
     State.knifeAim = not State.knifeAim
     getgenv().KnifeConfig.Enabled = State.knifeAim
     applyKnifeAim()
+end
+
+-- ========== SPEED ==========
+local function toggleSpeed()
+    State.speed = not State.speed
+    if State.speed then
+        if speedConnection then speedConnection:Disconnect() end
+        speedConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local hum = char.Humanoid
+                hum.WalkSpeed = 32  -- можно изменить значение (16 — стандарт, 32 — вдвое быстрее)
+            end
+        end)
+    else
+        if speedConnection then
+            speedConnection:Disconnect()
+            speedConnection = nil
+        end
+        -- Сбрасываем скорость
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = 16
+        end
+    end
+end
+
+-- ========== INFINITE JUMP ==========
+local function toggleInfJump()
+    State.infJump = not State.infJump
+    if State.infJump then
+        if infJumpConnection then infJumpConnection:Disconnect() end
+        infJumpConnection = UserInputService.JumpRequest:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if infJumpConnection then
+            infJumpConnection:Disconnect()
+            infJumpConnection = nil
+        end
+    end
 end
 
 -- ========== СНЕГОПАД ==========
@@ -354,8 +402,8 @@ function createMainGUI()
 
     -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 140)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -70)
+    mainFrame.Size = UDim2.new(0, 220, 0, 180)  -- Увеличен под новые функции
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -401,7 +449,6 @@ function createMainGUI()
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
 
-    -- UIListLayout для вертикального выравнивания
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.VerticalAlignment = Enum.VerticalAlignment.Top
@@ -412,7 +459,7 @@ function createMainGUI()
     -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
     local function createToggle(label, stateKey, callback)
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 32)
+        frame.Size = UDim2.new(0.95, 0, 0, 28)
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
         frame.BackgroundTransparency = 0.4
         frame.Parent = content
@@ -423,17 +470,17 @@ function createMainGUI()
         lbl.Position = UDim2.new(0.04, 0, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 12
+        lbl.TextSize = 11
         lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
         lbl.Text = label
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.Parent = frame
 
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 52, 0, 22)
-        btn.Position = UDim2.new(1, -58, 0.5, -11)
+        btn.Size = UDim2.new(0, 48, 0, 20)
+        btn.Position = UDim2.new(1, -54, 0.5, -10)
         btn.BorderSizePixel = 0
-        btn.TextSize = 10
+        btn.TextSize = 9
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
         btn.Parent = frame
@@ -456,12 +503,21 @@ function createMainGUI()
         end)
     end
 
+    -- СОЗДАЁМ ВСЕ ПЕРЕКЛЮЧАТЕЛИ
     createToggle("ESP (Duels)", "esp", function()
         toggleESP()
     end)
 
     createToggle("Silent Aim", "knifeAim", function()
         toggleKnifeAim()
+    end)
+
+    createToggle("Speed", "speed", function()
+        toggleSpeed()
+    end)
+
+    createToggle("Infinity Jump", "infJump", function()
+        toggleInfJump()
     end)
 
     -- ГОРЯЧАЯ КЛАВИША ]
@@ -480,7 +536,7 @@ function createMainGUI()
     end)
 
     task.wait(0.05)
-    createSnow(mainFrame)  -- ← ЕСЛИ НЕ НУЖЕН СНЕГ, ЗАКОММЕНТИРУЙ ЭТУ СТРОКУ
+    createSnow(mainFrame)
 
     mainFrame.Visible = true
     openBtn.Visible = false
@@ -488,6 +544,8 @@ function createMainGUI()
 
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
+    if State.speed then toggleSpeed() end
+    if State.infJump then toggleInfJump() end
 end
 
 showKeyWindow()
