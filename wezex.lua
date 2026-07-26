@@ -1,4 +1,4 @@
--- Wezex Hub v6 (LAUNCH FIX + TOUCH DRAG + GLOW)
+-- Wezex Hub v7 (VISIBILITY FIX + TOUCH DRAG + GLOW)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -22,7 +22,7 @@ local State = {
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 local snowParticles = {}
 local snowConnection = nil
-local keyGui = nil -- сохраняем ссылку на окно ключа
+local keyGui = nil
 
 -- ========== ESP ==========
 local espHighlights = {}
@@ -363,12 +363,10 @@ local function showKeyWindow()
 
     local function checkKey()
         if keyBox.Text == CORRECT_KEY then
-            -- Уничтожаем окно ключа
             if keyGui then
                 keyGui:Destroy()
                 keyGui = nil
             end
-            -- Небольшая задержка перед созданием главного меню
             task.wait(0.1)
             createMainGUI()
         else
@@ -390,7 +388,6 @@ local function showKeyWindow()
 end
 
 function createMainGUI()
-    -- Уничтожаем старые GUI
     pcall(function()
         if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     end)
@@ -414,7 +411,7 @@ function createMainGUI()
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = true  -- Меняем на true, чтобы кнопка появлялась сразу
+    openBtn.Visible = false  -- Скрыта, пока меню открыто
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
@@ -447,7 +444,7 @@ function createMainGUI()
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
-    mainFrame.Visible = false  -- Изначально скрыто
+    mainFrame.Visible = true  -- Показываем сразу
 
     -- ЗАГОЛОВОК (перетаскиваемый)
     local titleBar = Instance.new("Frame")
@@ -575,11 +572,11 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
-    -- Синхронизация состояний (если были включены)
+    -- Синхронизация состояний
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
 
-    -- Автоматически показываем меню после создания
+    -- ПРИНУДИТЕЛЬНОЕ ОТОБРАЖЕНИЕ МЕНЮ
     mainFrame.Visible = true
     openBtn.Visible = false
     isOpen = true
