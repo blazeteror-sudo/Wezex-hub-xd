@@ -21,7 +21,7 @@ local State = {
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 
--- ========== SILENT AIM ==========
+-- ========== SILENT AIM (отдельно) ==========
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
 local originalThrow = nil
@@ -86,7 +86,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ========== ИДЕАЛЬНЫЙ ESP (свои зелёные, враги красные) ==========
+-- ========== ESP (отдельно, без связи с Silent Aim) ==========
 local espHighlights, espConnections = {}, {}
 
 local function clearESP()
