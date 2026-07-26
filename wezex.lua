@@ -1,5 +1,4 @@
--- Wezex Hub by @Fanqwezex
--- KEY: 38399923
+-- Wezex Hub (только Silent Aim, включается кнопкой)
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -7,6 +6,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local KnifeController
 
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
@@ -19,13 +19,23 @@ local State = {
 }
 local screenGui, mainFrame, openBtn, isOpen = nil, nil, nil, false
 
--- ========== SILENT AIM (ТВОЙ КОД) ==========
+-- ========== SILENT AIM (твой код) ==========
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 
-local KnifeController = pcall(function()
-    return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
-end)
+-- Загружаем контроллер один раз при старте
+local function loadKnifeController()
+    if not KnifeController then
+        local success, result = pcall(function()
+            return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
+        end)
+        if success then
+            KnifeController = result
+        end
+    end
+    return KnifeController
+end
 
+local originalThrow = nil
 local function getClosestTarget()
     local best, bestFOV = nil, getgenv().KnifeConfig.FOV
     local center = Camera.ViewportSize / 2
@@ -44,25 +54,34 @@ local function getClosestTarget()
     return best
 end
 
-local originalThrow = nil
 local function toggleKnifeAim()
     State.knifeAim = not State.knifeAim
     getgenv().KnifeConfig.Enabled = State.knifeAim
-    if State.knifeAim and not originalThrow and KnifeController then
-        originalThrow = KnifeController._GetThrowDirection
-        KnifeController._GetThrowDirection = function(self, origin)
-            if getgenv().KnifeConfig.Enabled then
-                local target = getClosestTarget()
-                if target and target.Character then
-                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
-                    if part then return (part.Position - origin.Position).Unit end
+
+    if State.knifeAim then
+        -- При включении — загружаем контроллер и перехватываем
+        local controller = loadKnifeController()
+        if controller and not originalThrow then
+            originalThrow = controller._GetThrowDirection
+            controller._GetThrowDirection = function(self, origin)
+                if getgenv().KnifeConfig.Enabled then
+                    local target = getClosestTarget()
+                    if target and target.Character then
+                        local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart)
+                        if part then
+                            return (part.Position - origin.Position).Unit
+                        end
+                    end
                 end
+                return originalThrow(self, origin)
             end
-            return originalThrow(self, origin)
         end
-    elseif not State.knifeAim and originalThrow and KnifeController then
-        KnifeController._GetThrowDirection = originalThrow
-        originalThrow = nil
+    else
+        -- При выключении — восстанавливаем оригинальную функцию
+        if originalThrow and KnifeController then
+            KnifeController._GetThrowDirection = originalThrow
+            originalThrow = nil
+        end
     end
 end
 
