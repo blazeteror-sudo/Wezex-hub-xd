@@ -124,13 +124,7 @@ local function createSnowflakes(parent)
         f.ClipsDescendants = true
         Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
         f.Rotation = math.random(-30,30)
-        local data = {
-            obj = f,
-            speed = 0.1 + math.random()*0.3,
-            drift = 0.002 + math.random()*0.006,
-            phase = math.random()*math.pi*2,
-            startX = f.Position.X.Scale,
-        }
+        local data = {obj=f, speed=0.1+math.random()*0.3, drift=0.002+math.random()*0.006, phase=math.random()*math.pi*2, startX=f.Position.X.Scale}
         table.insert(snowflakes, f)
         RunService.RenderStepped:Connect(function()
             if not f or not f.Parent then return end
@@ -140,15 +134,14 @@ local function createSnowflakes(parent)
                 f.Position = UDim2.new(math.random()*0.9, 0, newY, 0)
                 data.startX = f.Position.X.Scale
             else
-                local driftX = data.startX + math.sin(tick()*data.drift+data.phase)*0.03
-                f.Position = UDim2.new(driftX, 0, newY, 0)
+                f.Position = UDim2.new(data.startX + math.sin(tick()*data.drift+data.phase)*0.03, 0, newY, 0)
             end
             f.Rotation = f.Rotation + (0.2 + math.random()*0.3)
         end)
     end
 end
 
--- ========== КЛЮЧ ==========
+-- ========== GUI ==========
 local function showKeyWindow()
     local keyGui = Instance.new("ScreenGui", CoreGui)
     keyGui.Name = "KeySystem"
@@ -226,7 +219,6 @@ local function showKeyWindow()
     UserInputService.InputBegan:Connect(function(input) if input.KeyCode == Enum.KeyCode.Return then enterBtn.MouseButton1Click:Fire() end end)
 end
 
--- ========== ОСНОВНОЕ МЕНЮ ==========
 function createMainGUI()
     pcall(function() if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end end)
 
