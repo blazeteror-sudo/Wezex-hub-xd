@@ -24,7 +24,7 @@ local mainFrame
 local openBtn
 local isOpen = false
 
--- ========== KNIFE AIM ==========
+-- ========== KNIFE AIM (Silent Aim) ==========
 getgenv().KnifeConfig = {
     Enabled = false,
     HitPart = "Head",
@@ -133,48 +133,7 @@ local function toggleESP()
     end
 end
 
--- ========== СНЕЖИНКИ ==========
-local function createSnowflakes(parent)
-    local snowflakes = {}
-    for i = 1, 35 do
-        local flake = Instance.new("Frame", parent)
-        flake.Size = UDim2.new(0, math.random(2, 5), 0, math.random(2, 5))
-        flake.Position = UDim2.new(math.random() * 0.95, 0, math.random() * 0.95, 0)
-        flake.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        flake.BackgroundTransparency = 0.2 + math.random() * 0.4
-        flake.BorderSizePixel = 0
-        flake.ZIndex = 10
-        Instance.new("UICorner", flake).CornerRadius = UDim.new(1, 0)
-        flake.Rotation = math.random(-30, 30)
-        local data = {
-            obj = flake,
-            speed = 0.2 + math.random() * 0.4,
-            drift = 0.003 + math.random() * 0.008,
-            phase = math.random() * math.pi * 2,
-            startX = flake.Position.X.Scale,
-        }
-        table.insert(snowflakes, data)
-    end
-
-    RunService.RenderStepped:Connect(function()
-        for _, flake in ipairs(snowflakes) do
-            if flake.obj and flake.obj.Parent then
-                local newY = flake.obj.Position.Y.Scale + flake.speed * 0.002
-                if newY > 1 then
-                    newY = -0.05
-                    flake.obj.Position = UDim2.new(math.random() * 0.95, 0, newY, 0)
-                    flake.startX = flake.obj.Position.X.Scale
-                else
-                    local driftX = flake.startX + math.sin(tick() * flake.drift + flake.phase) * 0.04
-                    flake.obj.Position = UDim2.new(driftX, 0, newY, 0)
-                end
-                flake.obj.Rotation = flake.obj.Rotation + (0.3 + math.random() * 0.5)
-            end
-        end
-    end)
-end
-
--- ========== ОКНО КЛЮЧА ==========
+-- ========== GUI ==========
 local function showKeyWindow()
     local keyGui = Instance.new("ScreenGui")
     keyGui.Name = "KeySystem"
@@ -185,8 +144,6 @@ local function showKeyWindow()
     main.Size = UDim2.new(1, 0, 1, 0)
     main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
     main.BackgroundTransparency = 0.1
-
-    createSnowflakes(main)
 
     local panel = Instance.new("Frame", main)
     panel.Size = UDim2.new(0, 240, 0, 130)
@@ -279,9 +236,7 @@ function createMainGUI()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = CoreGui
 
-    createSnowflakes(screenGui)
-
-    -- Кнопка возврата (W)
+    -- Кнопка W
     openBtn = Instance.new("TextButton", screenGui)
     openBtn.Name = "OpenBtn"
     openBtn.Size = UDim2.new(0, 48, 0, 48)
@@ -302,10 +257,9 @@ function createMainGUI()
         isOpen = true
     end)
 
-    -- Основное меню
     mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Size = UDim2.new(0, 200, 0, 130)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
+    mainFrame.Size = UDim2.new(0, 200, 0, 110)
+    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -378,7 +332,7 @@ function createMainGUI()
         end)
     end
 
-    createToggle("Knife Aim", State.knifeAim, function(v)
+    createToggle("Silent Aim (Knife)", State.knifeAim, function(v)
         State.knifeAim = v
         toggleKnifeAim()
     end)
