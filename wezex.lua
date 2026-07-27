@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + KEYSYSTEM)
+-- WEZEX HUB (WINDUI + KEYSYSTEM FIXED)
 -- КЛЮЧ: 38399923
 
 local RunService = game:GetService("RunService")
@@ -31,9 +31,11 @@ local State = {
 
 -- ====== КЛЮЧ-СИСТЕМА ======
 local CORRECT_KEY = "38399923"
+local keyVerified = false
 
 local function validateKey(userInput)
     if userInput == CORRECT_KEY then
+        keyVerified = true
         return true, "Доступ разрешен!"
     else
         return false, "Неверный ключ. Попробуйте снова."
@@ -49,7 +51,9 @@ local function copyLink()
     })
 end
 
--- ====== ESP ======
+-- ====== ОСНОВНЫЕ ФУНКЦИИ ======
+-- (ESP, Silent Aim, Noclip, Infinity Jump — без изменений, сокращено для читаемости)
+
 local espHighlights = {}
 local espConnections = {}
 
@@ -106,7 +110,6 @@ local function toggleESP()
     end
 end
 
--- ====== SILENT AIM ======
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 local originalThrow = nil
 
@@ -170,7 +173,6 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ====== NOCLIP ======
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -202,7 +204,6 @@ local function toggleNoclip()
     end
 end
 
--- ====== INFINITE JUMP ======
 local infJumpConnection = nil
 local function toggleInfJump()
     State.infJump = not State.infJump
@@ -222,122 +223,117 @@ local function toggleInfJump()
     end
 end
 
--- ====== СОЗДАНИЕ WINDUI С КЛЮЧ-СИСТЕМОЙ ======
-local Window = WindUI:CreateWindow({
-    Title = "Wezex Hub v4.1",
-    Folder = "WezexHub",
-    Icon = "solar:folder-2-bold-duotone",
-    KeySystem = true,
-    KeySettings = {
-        Title = "🔑 Проверка ключа",
-        Description = "Введите действующий ключ для активации Wezex Hub",
-        Link = "https://discord.gg/your-invite", -- замени на свой Discord
-        Verify = validateKey,
-        Copy = copyLink,
-    },
-    OpenButton = {
-        Title = "Wezex Hub",
-        Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-        Draggable = true,
-        Scale = 0.5,
-    },
-})
+-- ====== СОЗДАНИЕ ОСНОВНОГО GUI (ВЫЗЫВАЕТСЯ ПОСЛЕ КЛЮЧА) ======
+local function createMainUI()
+    local Window = WindUI:CreateWindow({
+        Title = "Wezex Hub v4.1",
+        Folder = "WezexHub",
+        Icon = "solar:folder-2-bold-duotone",
+        OpenButton = {
+            Title = "Wezex Hub",
+            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
+            Draggable = true,
+            Scale = 0.5,
+        },
+    })
 
--- ====== ВКЛАДКА COMBAT ======
-local CombatTab = Window:Tab({
-    Title = "Combat",
-    Icon = "solar:sword-bold",
-})
+    -- ВКЛАДКА COMBAT
+    local CombatTab = Window:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
+    local CombatSection = CombatTab:Section({ Title = "⚔️ Combat Settings" })
+    CombatSection:Toggle({
+        Title = "Silent Aim",
+        Desc = "Автоматическая наводка на голову",
+        Value = State.knifeAim,
+        Callback = function(v)
+            if v ~= State.knifeAim then
+                toggleKnifeAim()
+            end
+        end,
+    })
 
-local CombatSection = CombatTab:Section({
-    Title = "⚔️ Combat Settings",
-})
+    -- ВКЛАДКА MOVEMENT
+    local MovementTab = Window:Tab({ Title = "Movement", Icon = "solar:running-bold" })
+    local MovementSection = MovementTab:Section({ Title = "🏃 Movement Settings" })
+    MovementSection:Toggle({
+        Title = "Noclip",
+        Desc = "Проход сквозь стены",
+        Value = State.noclip,
+        Callback = function(v)
+            if v ~= State.noclip then
+                toggleNoclip()
+            end
+        end,
+    })
+    MovementSection:Toggle({
+        Title = "Infinity Jump",
+        Desc = "Бесконечные прыжки",
+        Value = State.infJump,
+        Callback = function(v)
+            if v ~= State.infJump then
+                toggleInfJump()
+            end
+        end,
+    })
 
-CombatSection:Toggle({
-    Title = "Silent Aim",
-    Desc = "Автоматическая наводка на голову",
-    Value = State.knifeAim,
-    Callback = function(v)
-        if v ~= State.knifeAim then
-            toggleKnifeAim()
-        end
+    -- ВКЛАДКА VISUALS
+    local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
+    local VisualsSection = VisualsTab:Section({ Title = "👁️ Visual Settings" })
+    VisualsSection:Toggle({
+        Title = "ESP (Duels)",
+        Desc = "Подсветка игроков",
+        Value = State.esp,
+        Callback = function(v)
+            if v ~= State.esp then
+                toggleESP()
+            end
+        end,
+    })
+
+    -- ВКЛАДКА ABOUT
+    local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-square-bold" })
+    local AboutSection = AboutTab:Section({ Title = "Wezex Hub v4.1" })
+    AboutSection:Button({
+        Title = "Destroy Window",
+        Color = Color3.fromRGB(255, 50, 50),
+        Callback = function()
+            Window:Destroy()
+        end,
+    })
+
+    -- Синхронизация
+    if State.esp then toggleESP() end
+    if State.knifeAim then toggleKnifeAim() end
+    if State.noclip then toggleNoclip() end
+    if State.infJump then toggleInfJump() end
+end
+
+-- ====== ЗАПУСК КЛЮЧ-СИСТЕМЫ ======
+-- Сначала создаём окно ключа, а после успешной проверки — основное GUI
+
+local keyWindow = WindUI:CreateKeyWindow({
+    Title = "🔑 Wezex Hub",
+    Description = "Введите ключ для активации",
+    Link = "https://discord.gg/your-invite",
+    Verify = function(input)
+        return input == CORRECT_KEY
     end,
-})
-
--- ====== ВКЛАДКА MOVEMENT ======
-local MovementTab = Window:Tab({
-    Title = "Movement",
-    Icon = "solar:running-bold",
-})
-
-local MovementSection = MovementTab:Section({
-    Title = "🏃 Movement Settings",
-})
-
-MovementSection:Toggle({
-    Title = "Noclip",
-    Desc = "Проход сквозь стены",
-    Value = State.noclip,
-    Callback = function(v)
-        if v ~= State.noclip then
-            toggleNoclip()
-        end
+    Copy = function()
+        setclipboard("https://discord.gg/your-invite")
+        WindUI:Notify({
+            Title = "Ссылка скопирована!",
+            Content = "Перейдите в Discord для получения ключа",
+            Duration = 5
+        })
     end,
-})
-
-MovementSection:Toggle({
-    Title = "Infinity Jump",
-    Desc = "Бесконечные прыжки",
-    Value = State.infJump,
-    Callback = function(v)
-        if v ~= State.infJump then
-            toggleInfJump()
-        end
+    OnSuccess = function()
+        keyWindow:Destroy()
+        createMainUI()
     end,
+    OnFail = function()
+        WindUI:Notify({
+            Title = "Неверный ключ!",
+            Content = "Попробуйте ещё раз",
+            Duration = 3
+        })
+    end
 })
-
--- ====== ВКЛАДКА VISUALS ======
-local VisualsTab = Window:Tab({
-    Title = "Visuals",
-    Icon = "solar:eye-bold",
-})
-
-local VisualsSection = VisualsTab:Section({
-    Title = "👁️ Visual Settings",
-})
-
-VisualsSection:Toggle({
-    Title = "ESP (Duels)",
-    Desc = "Подсветка игроков",
-    Value = State.esp,
-    Callback = function(v)
-        if v ~= State.esp then
-            toggleESP()
-        end
-    end,
-})
-
--- ====== ВКЛАДКА ABOUT ======
-local AboutTab = Window:Tab({
-    Title = "About",
-    Icon = "solar:info-square-bold",
-})
-
-local AboutSection = AboutTab:Section({
-    Title = "Wezex Hub v4.1",
-})
-
-AboutSection:Button({
-    Title = "Destroy Window",
-    Color = Color3.fromRGB(255, 50, 50),
-    Callback = function()
-        Window:Destroy()
-    end,
-})
-
--- ====== СИНХРОНИЗАЦИЯ ======
-task.wait(0.5)
-if State.esp then toggleESP() end
-if State.knifeAim then toggleKnifeAim() end
-if State.noclip then toggleNoclip() end
-if State.infJump then toggleInfJump() end
