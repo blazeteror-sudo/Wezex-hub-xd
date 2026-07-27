@@ -101,6 +101,7 @@ getgenv().KnifeConfig = {
 
 local originalThrow = nil
 local originalStart = nil
+local originalGetTarget = nil
 
 local function getFurthestTarget()
     local best = nil
@@ -143,6 +144,46 @@ local function getClosestTarget()
     return best
 end
 
+-- Перехватываем создание ножа
+local function hookKnifeCreation()
+    local function disableKnifeCollisions()
+        for _, knife in ipairs(workspace:GetDescendants()) do
+            if knife:IsA("BasePart") and knife.Name and string.find(knife.Name:lower(), "knife") then
+                pcall(function()
+                    knife.CanCollide = false
+                    knife.CanTouch = false
+                    knife:SetAttribute("WezexWallbang", true)
+                end)
+            end
+        end
+    end
+    
+    -- Отключаем коллизии у новых ножей при их появлении
+    local connection = workspace.ChildAdded:Connect(function(child)
+        task.wait(0.05)
+        if child:IsA("BasePart") and child.Name and string.find(child.Name:lower(), "knife") then
+            pcall(function()
+                child.CanCollide = false
+                child.CanTouch = false
+                child:SetAttribute("WezexWallbang", true)
+            end)
+        end
+    end)
+    
+    -- Периодическая проверка
+    local loopConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().KnifeConfig.Enabled then return end
+        disableKnifeCollisions()
+    end)
+    
+    -- Сохраняем подключения, чтобы потом отключить
+    if not _G.WezexKnifeHooks then
+        _G.WezexKnifeHooks = {}
+    end
+    table.insert(_G.WezexKnifeHooks, connection)
+    table.insert(_G.WezexKnifeHooks, loopConnection)
+end
+
 local function applyKnifeAim()
     if not KnifeController then
         local success, result = pcall(function()
@@ -163,6 +204,9 @@ local function applyKnifeAim()
             originalStart = KnifeController._GetThrowStartPosition
         end
 
+        -- Включаем хуки для ножей
+        hookKnifeCreation()
+
         -- Перехватываем направление
         KnifeController._GetThrowDirection = function(self, origin)
             if getgenv().KnifeConfig.Enabled then
@@ -177,20 +221,37 @@ local function applyKnifeAim()
             return originalThrow(self, origin)
         end
 
-        -- Перехватываем начальную позицию, чтобы игнорировать стены
+        -- Перехватываем стартовую позицию (спавним нож прямо у цели)
         KnifeController._GetThrowStartPosition = function(self)
             if getgenv().KnifeConfig.Enabled then
                 local target = getClosestTarget()
                 if target and target.Character then
                     local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or target.Character:FindFirstChild("HumanoidRootPart")
                     if part then
-                        return part.Position - Vector3.new(0, 0, 5)
+                        return part.Position + Vector3.new(0, 2, 0)
                     end
                 end
             end
             return originalStart(self)
         end
+        
+        -- Перехватываем метод поиска цели в самом контроллере (если есть)
+        if KnifeController.GetTarget then
+            if not originalGetTarget then
+                originalGetTarget = KnifeController.GetTarget
+            end
+            KnifeController.GetTarget = function(self)
+                if getgenv().KnifeConfig.Enabled then
+                    local target = getClosestTarget()
+                    if target and target.Character then
+                        return target.Character
+                    end
+                end
+                return originalGetTarget(self)
+            end
+        end
     else
+        -- Восстанавливаем оригинальные методы
         if originalThrow and KnifeController then
             KnifeController._GetThrowDirection = originalThrow
             originalThrow = nil
@@ -198,6 +259,29 @@ local function applyKnifeAim()
         if originalStart and KnifeController then
             KnifeController._GetThrowStartPosition = originalStart
             originalStart = nil
+        end
+        if originalGetTarget and KnifeController then
+            KnifeController.GetTarget = originalGetTarget
+            originalGetTarget = nil
+        end
+        
+        -- Отключаем хуки ножей
+        if _G.WezexKnifeHooks then
+            for _, hook in ipairs(_G.WezexKnifeHooks) do
+                pcall(function() hook:Disconnect() end)
+            end
+            _G.WezexKnifeHooks = {}
+        end
+        
+        -- Восстанавливаем коллизии у ножей (опционально)
+        for _, knife in ipairs(workspace:GetDescendants()) do
+            if knife:IsA("BasePart") and knife:GetAttribute("WezexWallbang") then
+                pcall(function()
+                    knife.CanCollide = true
+                    knife.CanTouch = true
+                    knife:SetAttribute("WezexWallbang", nil)
+                end)
+            end
         end
     end
 end
