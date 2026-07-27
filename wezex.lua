@@ -1,11 +1,12 @@
--- WEZEX HUB (WINDUI + KEYSYSTEM FIXED)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM)
 -- КЛЮЧ: 38399923
 
-local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local KnifeController
 
 -- ====== ЗАГРУЗКА WINDUI ======
@@ -21,7 +22,11 @@ do
     end
 end
 
--- ====== СОСТОЯНИЯ ======
+-- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+local CORRECT_KEY = "38399923"
+local keyVerified = false
+
+-- ====== НАШИ СОСТОЯНИЯ ======
 local State = {
     esp = false,
     knifeAim = false,
@@ -29,31 +34,8 @@ local State = {
     infJump = false,
 }
 
--- ====== КЛЮЧ-СИСТЕМА ======
-local CORRECT_KEY = "38399923"
-local keyVerified = false
-
-local function validateKey(userInput)
-    if userInput == CORRECT_KEY then
-        keyVerified = true
-        return true, "Доступ разрешен!"
-    else
-        return false, "Неверный ключ. Попробуйте снова."
-    end
-end
-
-local function copyLink()
-    setclipboard("https://discord.gg/your-invite") -- замени на свой Discord
-    WindUI:Notify({
-        Title = "Система Ключей",
-        Content = "Ссылка на получение ключа скопирована!",
-        Duration = 5
-    })
-end
-
--- ====== ОСНОВНЫЕ ФУНКЦИИ ======
--- (ESP, Silent Aim, Noclip, Infinity Jump — без изменений, сокращено для читаемости)
-
+-- ====== НАШИ ФУНКЦИИ ======
+-- ESP
 local espHighlights = {}
 local espConnections = {}
 
@@ -110,6 +92,7 @@ local function toggleESP()
     end
 end
 
+-- Silent Aim
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 local originalThrow = nil
 
@@ -173,6 +156,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
+-- Noclip
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -204,6 +188,7 @@ local function toggleNoclip()
     end
 end
 
+-- Infinity Jump
 local infJumpConnection = nil
 local function toggleInfJump()
     State.infJump = not State.infJump
@@ -223,8 +208,102 @@ local function toggleInfJump()
     end
 end
 
--- ====== СОЗДАНИЕ ОСНОВНОГО GUI (ВЫЗЫВАЕТСЯ ПОСЛЕ КЛЮЧА) ======
-local function createMainUI()
+-- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+local function showNativeKeyWindow()
+    -- Очистка
+    pcall(function()
+        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    end)
+
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystem"
+    keyGui.Parent = CoreGui
+    keyGui.ResetOnSpawn = false
+    keyGui.IgnoreGuiInset = true
+
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 260, 0, 150)
+    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = keyGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Wezex Hub"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = panel
+
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 18)
+    info.Position = UDim2.new(0, 0, 0, 42)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(160, 160, 200)
+    info.Text = "Введите ключ доступа"
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = panel
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
+    keyBox.BackgroundTransparency = 0.3
+    keyBox.Font = Enum.Font.GothamBold
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.Text = ""
+    keyBox.PlaceholderText = "Ключ"
+    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
+    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    enterBtn.BackgroundTransparency = 0.2
+    enterBtn.Text = "Войти"
+    enterBtn.TextSize = 16
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local function checkKey()
+        if keyBox.Text == CORRECT_KEY then
+            keyVerified = true
+            keyGui:Destroy()
+            createMainUI()
+        else
+            keyBox.Text = ""
+            keyBox.PlaceholderText = "Неверно!"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            task.wait(0.6)
+            keyBox.PlaceholderText = "Ключ"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+        end
+    end
+
+    enterBtn.MouseButton1Click:Connect(checkKey)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
+    end)
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
+    end)
+end
+
+-- ====== ТВОЙ GUI НА WINDUI ======
+function createMainUI()
     local Window = WindUI:CreateWindow({
         Title = "Wezex Hub v4.1",
         Folder = "WezexHub",
@@ -238,8 +317,13 @@ local function createMainUI()
     })
 
     -- ВКЛАДКА COMBAT
-    local CombatTab = Window:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
-    local CombatSection = CombatTab:Section({ Title = "⚔️ Combat Settings" })
+    local CombatTab = Window:Tab({
+        Title = "Combat",
+        Icon = "solar:sword-bold",
+    })
+    local CombatSection = CombatTab:Section({
+        Title = "⚔️ Combat Settings",
+    })
     CombatSection:Toggle({
         Title = "Silent Aim",
         Desc = "Автоматическая наводка на голову",
@@ -252,8 +336,13 @@ local function createMainUI()
     })
 
     -- ВКЛАДКА MOVEMENT
-    local MovementTab = Window:Tab({ Title = "Movement", Icon = "solar:running-bold" })
-    local MovementSection = MovementTab:Section({ Title = "🏃 Movement Settings" })
+    local MovementTab = Window:Tab({
+        Title = "Movement",
+        Icon = "solar:running-bold",
+    })
+    local MovementSection = MovementTab:Section({
+        Title = "🏃 Movement Settings",
+    })
     MovementSection:Toggle({
         Title = "Noclip",
         Desc = "Проход сквозь стены",
@@ -276,8 +365,13 @@ local function createMainUI()
     })
 
     -- ВКЛАДКА VISUALS
-    local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
-    local VisualsSection = VisualsTab:Section({ Title = "👁️ Visual Settings" })
+    local VisualsTab = Window:Tab({
+        Title = "Visuals",
+        Icon = "solar:eye-bold",
+    })
+    local VisualsSection = VisualsTab:Section({
+        Title = "👁️ Visual Settings",
+    })
     VisualsSection:Toggle({
         Title = "ESP (Duels)",
         Desc = "Подсветка игроков",
@@ -290,8 +384,13 @@ local function createMainUI()
     })
 
     -- ВКЛАДКА ABOUT
-    local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-square-bold" })
-    local AboutSection = AboutTab:Section({ Title = "Wezex Hub v4.1" })
+    local AboutTab = Window:Tab({
+        Title = "About",
+        Icon = "solar:info-square-bold",
+    })
+    local AboutSection = AboutTab:Section({
+        Title = "Wezex Hub v4.1",
+    })
     AboutSection:Button({
         Title = "Destroy Window",
         Color = Color3.fromRGB(255, 50, 50),
@@ -307,33 +406,5 @@ local function createMainUI()
     if State.infJump then toggleInfJump() end
 end
 
--- ====== ЗАПУСК КЛЮЧ-СИСТЕМЫ ======
--- Сначала создаём окно ключа, а после успешной проверки — основное GUI
-
-local keyWindow = WindUI:CreateKeyWindow({
-    Title = "🔑 Wezex Hub",
-    Description = "Введите ключ для активации",
-    Link = "https://discord.gg/your-invite",
-    Verify = function(input)
-        return input == CORRECT_KEY
-    end,
-    Copy = function()
-        setclipboard("https://discord.gg/your-invite")
-        WindUI:Notify({
-            Title = "Ссылка скопирована!",
-            Content = "Перейдите в Discord для получения ключа",
-            Duration = 5
-        })
-    end,
-    OnSuccess = function()
-        keyWindow:Destroy()
-        createMainUI()
-    end,
-    OnFail = function()
-        WindUI:Notify({
-            Title = "Неверный ключ!",
-            Content = "Попробуйте ещё раз",
-            Duration = 3
-        })
-    end
-})
+-- ====== ЗАПУСК ======
+showNativeKeyWindow()
