@@ -1,4 +1,4 @@
--- WEZEX HUB (VISUAL COMBO + MOVEMENT)
+-- WEZEX HUB (CATEGORIES)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -7,7 +7,6 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 -- Очистка
 pcall(function()
@@ -31,9 +30,6 @@ local espHighlights = {}
 local espConnections = {}
 local originalThrow = nil
 local KnifeController = nil
-local comboLabel = nil
-local comboCount = 0
-local comboDisplay = nil
 
 -- ====== ESP ======
 local function clearESP()
@@ -272,32 +268,6 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ====== ВИЗУАЛ КОМБО ======
-local function updateCombo()
-    comboCount = comboCount + 1
-    if comboDisplay then
-        comboDisplay.Text = "🔥 " .. comboCount .. "x"
-        comboDisplay.TextTransparency = 0
-        comboDisplay.TextColor3 = Color3.fromRGB(255, 200, 50)
-        -- Анимация увеличения
-        local scaleUp = TweenService:Create(comboDisplay, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
-            TextSize = 28
-        })
-        scaleUp:Play()
-        task.wait(0.2)
-        local scaleDown = TweenService:Create(comboDisplay, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {
-            TextSize = 18
-        })
-        scaleDown:Play()
-        -- Плавное затухание
-        task.wait(1.5)
-        local fade = TweenService:Create(comboDisplay, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {
-            TextTransparency = 1
-        })
-        fade:Play()
-    end
-end
-
 -- ====== ГЛАВНОЕ МЕНЮ ======
 function createMainGUI()
     pcall(function()
@@ -311,7 +281,6 @@ function createMainGUI()
     screenGui.IgnoreGuiInset = true
     screenGui.Enabled = true
 
-    -- КНОПКА W (с плавным появлением)
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -323,37 +292,22 @@ function createMainGUI()
     openBtn.Font = Enum.Font.GothamBold
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.BackgroundTransparency = 1
     openBtn.Visible = false
 
     openBtn.MouseButton1Click:Connect(function()
-        -- Анимация открытия меню
         mainFrame.Visible = true
         openBtn.Visible = false
-        mainFrame.Size = UDim2.new(0, 0, 0, 180)
-        local openTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 220, 0, 180)
-        })
-        openTween:Play()
     end)
 
-    -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 0, 0, 180)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+    mainFrame.Size = UDim2.new(0, 240, 0, 280)
+    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -140)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
-    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
     mainFrame.Visible = true
-
-    -- Анимация появления меню (при первом открытии)
-    task.wait(0.05)
-    local appearTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-        Size = UDim2.new(0, 220, 0, 180)
-    })
-    appearTween:Play()
 
     -- ЗАГОЛОВОК
     local title = Instance.new("TextLabel")
@@ -367,20 +321,7 @@ function createMainGUI()
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = mainFrame
 
-    -- ВИЗУАЛ КОМБО (в правом верхнем углу)
-    comboDisplay = Instance.new("TextLabel")
-    comboDisplay.Size = UDim2.new(0, 80, 0, 30)
-    comboDisplay.Position = UDim2.new(0.7, 0, 0, 4)
-    comboDisplay.BackgroundTransparency = 1
-    comboDisplay.Font = Enum.Font.GothamBlack
-    comboDisplay.TextSize = 18
-    comboDisplay.TextColor3 = Color3.fromRGB(255, 200, 50)
-    comboDisplay.Text = "🔥 0x"
-    comboDisplay.TextTransparency = 1
-    comboDisplay.TextXAlignment = Enum.TextXAlignment.Right
-    comboDisplay.Parent = mainFrame
-
-    -- Кнопка закрытия
+    -- КНОПКА ЗАКРЫТИЯ
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 24, 0, 24)
     closeBtn.Position = UDim2.new(1, -30, 0, 4)
@@ -392,16 +333,8 @@ function createMainGUI()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
 
     closeBtn.MouseButton1Click:Connect(function()
-        -- Анимация закрытия меню
-        local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {
-            Size = UDim2.new(0, 0, 0, 180)
-        })
-        closeTween:Play()
-        task.wait(0.2)
         mainFrame.Visible = false
         openBtn.Visible = true
-        -- Анимация появления кнопки W
-        openBtn.BackgroundTransparency = 0.15
     end)
 
     -- КОНТЕЙНЕР
@@ -415,19 +348,35 @@ function createMainGUI()
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.VerticalAlignment = Enum.VerticalAlignment.Top
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 8)
     layout.Parent = content
 
+    -- ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ЗАГОЛОВКА КАТЕГОРИИ
+    local function createCategoryHeader(text)
+        local header = Instance.new("TextLabel")
+        header.Size = UDim2.new(0.9, 0, 0, 20)
+        header.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
+        header.BackgroundTransparency = 0.4
+        header.Font = Enum.Font.GothamBold
+        header.TextSize = 12
+        header.TextColor3 = Color3.fromRGB(255, 255, 255)
+        header.Text = text
+        header.TextXAlignment = Enum.TextXAlignment.Center
+        header.Parent = content
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    end
+
+    -- ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
     local function createToggle(label, stateKey, callback)
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 28)
+        frame.Size = UDim2.new(0.9, 0, 0, 26)
         frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
         frame.BackgroundTransparency = 0.4
         frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
 
         local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.55, 0, 1, 0)
+        lbl.Size = UDim2.new(0.6, 0, 1, 0)
         lbl.Position = UDim2.new(0.04, 0, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Font = Enum.Font.GothamBold
@@ -438,13 +387,13 @@ function createMainGUI()
         lbl.Parent = frame
 
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 48, 0, 20)
-        btn.Position = UDim2.new(1, -54, 0.5, -10)
+        btn.Size = UDim2.new(0, 44, 0, 18)
+        btn.Position = UDim2.new(1, -50, 0.5, -9)
         btn.TextSize = 9
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
         btn.Parent = frame
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
 
         local function updateButton()
             if State[stateKey] then
@@ -460,35 +409,29 @@ function createMainGUI()
         btn.MouseButton1Click:Connect(function()
             callback()
             updateButton()
-            -- При каждом клике обновляем комбо (для демонстрации)
-            updateCombo()
         end)
     end
 
-    createToggle("ESP (Duels)", "esp", toggleESP)
+    -- ====== КАТЕГОРИИ ======
+    createCategoryHeader("⚔️ Combat")
     createToggle("Silent Aim", "knifeAim", toggleKnifeAim)
+
+    createCategoryHeader("🏃 Movement")
     createToggle("Noclip", "noclip", toggleNoclip)
     createToggle("Infinity Jump", "infJump", toggleInfJump)
 
-    -- Клавиша ]
+    createCategoryHeader("👁️ Visuals")
+    createToggle("ESP (Duels)", "esp", toggleESP)
+
+    -- КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
             if mainFrame.Visible then
-                local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {
-                    Size = UDim2.new(0, 0, 0, 180)
-                })
-                closeTween:Play()
-                task.wait(0.2)
                 mainFrame.Visible = false
                 openBtn.Visible = true
-                openBtn.BackgroundTransparency = 0.15
             else
                 mainFrame.Visible = true
                 openBtn.Visible = false
-                local openTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-                    Size = UDim2.new(0, 220, 0, 180)
-                })
-                openTween:Play()
             end
         end
     end)
@@ -496,6 +439,7 @@ function createMainGUI()
     task.wait(0.05)
     createSnow(mainFrame)
 
+    mainFrame.Visible = true
     openBtn.Visible = false
 end
 
@@ -568,3 +512,7 @@ local function showKeyWindow()
     enterBtn.MouseButton1Click:Connect(checkKey)
     keyBox.FocusLost:Connect(function(enterPressed)
         if enterPressed then checkKey() end
+    end)
+end
+
+showKeyWindow()
