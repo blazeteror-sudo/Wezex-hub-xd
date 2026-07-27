@@ -1,4 +1,4 @@
--- WEZEX HUB (TAB MENU FIXED)
+-- WEZEX HUB (TOGGLE SWITCH STYLE)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -270,10 +270,10 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ====== КОНТЕЙНЕР СОДЕРЖИМОГО ======
-local function createToggle(label, stateKey, callback, parent)
+-- ====== КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ (TOGGLE SWITCH) ======
+local function createToggleSwitch(label, stateKey, callback, parent)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0.9, 0, 0, 26)
+    frame.Size = UDim2.new(0.95, 0, 0, 28)
     frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
     frame.BackgroundTransparency = 0.4
     frame.Parent = parent
@@ -284,35 +284,53 @@ local function createToggle(label, stateKey, callback, parent)
     lbl.Position = UDim2.new(0.04, 0, 0, 0)
     lbl.BackgroundTransparency = 1
     lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 11
+    lbl.TextSize = 12
     lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
     lbl.Text = label
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = frame
 
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 44, 0, 18)
-    btn.Position = UDim2.new(1, -50, 0.5, -9)
-    btn.TextSize = 9
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = frame
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    -- КОНТЕЙНЕР ДЛЯ СВИТЧА
+    local switchContainer = Instance.new("Frame")
+    switchContainer.Size = UDim2.new(0, 40, 0, 22)
+    switchContainer.Position = UDim2.new(1, -46, 0.5, -11)
+    switchContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    switchContainer.BorderSizePixel = 0
+    switchContainer.Parent = frame
+    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
 
-    local function updateButton()
+    -- КРУГЛАЯ РУЧКА
+    local handle = Instance.new("TextButton")
+    handle.Size = UDim2.new(0, 18, 0, 18)
+    handle.Position = UDim2.new(0, 2, 0.5, -9)
+    handle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    handle.BorderSizePixel = 0
+    handle.Text = ""
+    handle.Parent = switchContainer
+    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
+
+    local function updateSwitch()
         if State[stateKey] then
-            btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-            btn.Text = "ON"
+            switchContainer.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+            handle.Position = UDim2.new(0, 20, 0.5, -9)
+            handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-            btn.Text = "OFF"
+            switchContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+            handle.Position = UDim2.new(0, 2, 0.5, -9)
+            handle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
         end
     end
-    updateButton()
+    updateSwitch()
 
-    btn.MouseButton1Click:Connect(function()
+    handle.MouseButton1Click:Connect(function()
         callback()
-        updateButton()
+        updateSwitch()
+    end)
+
+    -- Клик по всему контейнеру тоже работает
+    switchContainer.MouseButton1Click:Connect(function()
+        callback()
+        updateSwitch()
     end)
 end
 
@@ -323,12 +341,12 @@ local function updateContent()
     end
 
     if currentTab == "Combat" then
-        createToggle("Silent Aim", "knifeAim", toggleKnifeAim, contentContainer)
+        createToggleSwitch("Silent Aim", "knifeAim", toggleKnifeAim, contentContainer)
     elseif currentTab == "Movement" then
-        createToggle("Noclip", "noclip", toggleNoclip, contentContainer)
-        createToggle("Infinity Jump", "infJump", toggleInfJump, contentContainer)
+        createToggleSwitch("Noclip", "noclip", toggleNoclip, contentContainer)
+        createToggleSwitch("Infinity Jump", "infJump", toggleInfJump, contentContainer)
     elseif currentTab == "Visuals" then
-        createToggle("ESP (Duels)", "esp", toggleESP, contentContainer)
+        createToggleSwitch("ESP (Duels)", "esp", toggleESP, contentContainer)
     end
 end
 
@@ -364,8 +382,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 200)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -100)
+    mainFrame.Size = UDim2.new(0, 220, 0, 170)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -85)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
@@ -375,11 +393,11 @@ function createMainGUI()
 
     -- ЗАГОЛОВОК
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Size = UDim2.new(1, 0, 0, 26)
     title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
-    title.TextSize = 18
+    title.TextSize = 16
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
@@ -387,11 +405,11 @@ function createMainGUI()
 
     -- КНОПКА ЗАКРЫТИЯ
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -30, 0, 4)
+    closeBtn.Size = UDim2.new(0, 22, 0, 22)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
     closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
     closeBtn.Text = "✕"
-    closeBtn.TextSize = 14
+    closeBtn.TextSize = 12
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Parent = mainFrame
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
@@ -403,12 +421,11 @@ function createMainGUI()
 
     -- КОНТЕЙНЕР ТАБОВ
     local tabContainer = Instance.new("Frame")
-    tabContainer.Size = UDim2.new(1, -14, 0, 28)
-    tabContainer.Position = UDim2.new(0, 7, 0, 38)
+    tabContainer.Size = UDim2.new(1, -14, 0, 26)
+    tabContainer.Position = UDim2.new(0, 7, 0, 34)
     tabContainer.BackgroundTransparency = 1
     tabContainer.Parent = mainFrame
 
-    -- ТАБЫ (3 штуки ровно по ширине)
     local tabs = {"Combat", "Movement", "Visuals"}
     local tabButtons = {}
     local tabWidth = 0.28
@@ -420,7 +437,7 @@ function createMainGUI()
         btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
         btn.BackgroundTransparency = 0.3
         btn.Text = name
-        btn.TextSize = 11
+        btn.TextSize = 10
         btn.TextColor3 = Color3.fromRGB(200, 200, 255)
         btn.Font = Enum.Font.GothamBold
         btn.Parent = tabContainer
@@ -440,15 +457,14 @@ function createMainGUI()
         table.insert(tabButtons, btn)
     end
 
-    -- АКТИВИРУЕМ ПЕРВЫЙ ТАБ
     tabButtons[1].BackgroundColor3 = Color3.fromRGB(100, 80, 200)
     tabButtons[1].BackgroundTransparency = 0.2
     currentTab = "Combat"
 
     -- КОНТЕЙНЕР ДЛЯ КНОПОК
     contentContainer = Instance.new("Frame")
-    contentContainer.Size = UDim2.new(1, -14, 1, -80)
-    contentContainer.Position = UDim2.new(0, 7, 0, 72)
+    contentContainer.Size = UDim2.new(1, -10, 1, -68)
+    contentContainer.Position = UDim2.new(0, 5, 0, 66)
     contentContainer.BackgroundTransparency = 1
     contentContainer.Parent = mainFrame
 
@@ -456,12 +472,11 @@ function createMainGUI()
     contentLayout.FillDirection = Enum.FillDirection.Vertical
     contentLayout.VerticalAlignment = Enum.VerticalAlignment.Top
     contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    contentLayout.Padding = UDim.new(0, 6)
+    contentLayout.Padding = UDim.new(0, 4)
     contentLayout.Parent = contentContainer
 
     updateContent()
 
-    -- КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
             if mainFrame.Visible then
