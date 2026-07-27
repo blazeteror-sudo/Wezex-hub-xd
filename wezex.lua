@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - WITH KNIFE TRAIL
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - FULL EXPANSION
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,6 +8,8 @@ local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local KnifeController
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -22,11 +24,11 @@ do
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+-- ====== КЛЮЧ ======
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
--- ====== НАШИ СОСТОЯНИЯ ======
+-- ====== СОСТОЯНИЯ ======
 local State = {
     esp = false,
     knifeAim = false,
@@ -34,7 +36,16 @@ local State = {
     knifeNoclip = false,
     infJump = false,
     knifeTrail = false,
+    hitmarker = false,
+    skyChange = false,
+    bunnyHop = false,
+    spinBot = false,
+    thirdPerson = false,
 }
+local skyConnection = nil
+local spinConnection = nil
+local thirdPersonConnection = nil
+local bunnyHopConnection = nil
 
 -- ====== ESP ======
 local espHighlights = {}
@@ -93,7 +104,7 @@ local function toggleESP()
     end
 end
 
--- ====== СТАРЫЙ SILENT AIM ======
+-- ====== SILENT AIM ======
 getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 local originalThrow = nil
 
@@ -157,7 +168,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ====== NOCLIP ДЛЯ ПЕРСОНАЖА ======
+-- ====== NOCLIP ======
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -189,25 +200,13 @@ local function toggleNoclip()
     end
 end
 
--- ====== NOCLIP ДЛЯ НОЖА ======
+-- ====== KNIFE NOCLIP ======
 local knifeNoclipConnection = nil
 local function toggleKnifeNoclip()
     State.knifeNoclip = not State.knifeNoclip
     if State.knifeNoclip then
         if knifeNoclipConnection then knifeNoclipConnection:Disconnect() end
         knifeNoclipConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
-                    pcall(function()
-                        part.CanCollide = false
-                        part.CanTouch = false
-                    end)
-                end
-            end
-            
             for _, knife in ipairs(workspace:GetDescendants()) do
                 if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
                     pcall(function()
@@ -216,11 +215,30 @@ local function toggleKnifeNoclip()
                     end)
                 end
             end
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
+                        pcall(function()
+                            part.CanCollide = false
+                            part.CanTouch = false
+                        end)
+                    end
+                end
+            end
         end)
     else
         if knifeNoclipConnection then
             knifeNoclipConnection:Disconnect()
             knifeNoclipConnection = nil
+        end
+        for _, knife in ipairs(workspace:GetDescendants()) do
+            if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
+                pcall(function()
+                    knife.CanCollide = true
+                    knife.CanTouch = true
+                end)
+            end
         end
         local char = LocalPlayer.Character
         if char then
@@ -231,14 +249,6 @@ local function toggleKnifeNoclip()
                         part.CanTouch = true
                     end)
                 end
-            end
-        end
-        for _, knife in ipairs(workspace:GetDescendants()) do
-            if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
-                pcall(function()
-                    knife.CanCollide = true
-                    knife.CanTouch = true
-                end)
             end
         end
     end
@@ -264,37 +274,36 @@ local function toggleInfJump()
     end
 end
 
--- ====== KNIFE TRAIL (КРАСИВАЯ ЛИНИЯ ЗА НОЖОМ) ======
-local trailConnections = {}
+-- ====== KNIFE TRAIL ======
 local trailParts = {}
+local trailConnections = {}
 
 local function createTrail(knife)
     if not State.knifeTrail then return end
+    if knife:FindFirstChild("WezexKnifeTrail") then return end
     
     local trail = Instance.new("Trail")
     trail.Name = "WezexKnifeTrail"
     trail.Parent = knife
-    trail.Attachment0 = Instance.new("Attachment")
-    trail.Attachment0.Parent = knife
-    trail.Attachment0.Position = Vector3.new(0, 0, 0)
     
-    -- Настройки трейла
-    trail.Lifetime = 0.3
-    trail.MinLength = 0.5
+    local att = Instance.new("Attachment")
+    att.Parent = knife
+    att.Position = Vector3.new(0, 0, 0)
+    trail.Attachment0 = att
+    
+    trail.Lifetime = 0.4
+    trail.MinLength = 0.3
     trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
+        NumberSequenceKeypoint.new(0, 0.6),
         NumberSequenceKeypoint.new(1, 1),
     })
-    
-    -- Радужный цвет для трейла
     trail.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
         ColorSequenceKeypoint.new(0.3, Color3.fromRGB(0, 255, 255)),
         ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 255, 0)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
     })
-    
-    trail.Width = NumberSequence.new(0.15)
+    trail.Width = NumberSequence.new(0.2)
     
     table.insert(trailParts, trail)
 end
@@ -308,62 +317,49 @@ local function clearTrails()
     trailParts = {}
 end
 
-local function setupKnifeTrail()
-    -- Очищаем старые подключения
-    for _, conn in ipairs(trailConnections) do
-        conn:Disconnect()
-    end
-    trailConnections = {}
-    clearTrails()
-    
-    if not State.knifeTrail then return end
-    
-    -- Следим за появлением новых ножей
-    local function checkKnives()
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
-                if not part:FindFirstChild("WezexKnifeTrail") then
-                    createTrail(part)
-                end
-            end
-        end
-        
-        -- Также проверяем ножи в workspace (летящие)
-        for _, knife in ipairs(workspace:GetDescendants()) do
-            if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
-                if not knife:FindFirstChild("WezexKnifeTrail") then
-                    createTrail(knife)
-                end
-            end
-        end
-    end
-    
-    -- Подключаем проверку
-    local conn = RunService.Heartbeat:Connect(checkKnives)
-    table.insert(trailConnections, conn)
-    
-    -- Проверяем при добавлении новых объектов
-    local childConn = workspace.ChildAdded:Connect(function(child)
-        task.wait(0.05)
-        if child:IsA("BasePart") and child.Name and string.find(string.lower(child.Name), "knife") then
-            if not child:FindFirstChild("WezexKnifeTrail") then
-                createTrail(child)
-            end
-        end
-    end)
-    table.insert(trailConnections, childConn)
-    
-    -- Первоначальная проверка
-    checkKnives()
-end
-
 local function toggleKnifeTrail()
     State.knifeTrail = not State.knifeTrail
     if State.knifeTrail then
-        setupKnifeTrail()
+        for _, conn in ipairs(trailConnections) do
+            conn:Disconnect()
+        end
+        trailConnections = {}
+        clearTrails()
+        
+        local function checkKnives()
+            for _, knife in ipairs(workspace:GetDescendants()) do
+                if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
+                    if not knife:FindFirstChild("WezexKnifeTrail") then
+                        createTrail(knife)
+                    end
+                end
+            end
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
+                        if not part:FindFirstChild("WezexKnifeTrail") then
+                            createTrail(part)
+                        end
+                    end
+                end
+            end
+        end
+        
+        local conn = RunService.Heartbeat:Connect(checkKnives)
+        table.insert(trailConnections, conn)
+        
+        local childConn = workspace.ChildAdded:Connect(function(child)
+            task.wait(0.05)
+            if child:IsA("BasePart") and child.Name and string.find(string.lower(child.Name), "knife") then
+                if not child:FindFirstChild("WezexKnifeTrail") then
+                    createTrail(child)
+                end
+            end
+        end)
+        table.insert(trailConnections, childConn)
+        
+        checkKnives()
     else
         for _, conn in ipairs(trailConnections) do
             conn:Disconnect()
@@ -373,7 +369,172 @@ local function toggleKnifeTrail()
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+-- ====== HITMARKERS ======
+local hitmarkerParts = {}
+local function createHitmarker(position)
+    if not State.hitmarker then return end
+    
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "WezexHitmarker"
+    gui.Parent = CoreGui
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 30, 0, 30)
+    frame.Position = UDim2.new(0.5, -15, 0.5, -15)
+    frame.BackgroundTransparency = 1
+    frame.Parent = gui
+    
+    local lines = {
+        {1, 1, 0.3, 0.7},
+        {0.7, 0.3, 1, 1},
+        {0.3, 0.7, 1, 1},
+        {0, 1, 0.3, 0.3},
+    }
+    
+    for _, data in ipairs(lines) do
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(data[1], 0, data[2], 0)
+        line.Position = UDim2.new(data[3], 0, data[4], 0)
+        line.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        line.BackgroundTransparency = 0.2
+        line.BorderSizePixel = 0
+        line.Parent = frame
+    end
+    
+    table.insert(hitmarkerParts, gui)
+    
+    -- Анимация исчезновения
+    task.wait(0.2)
+    for i = 1, 10 do
+        frame.BackgroundTransparency = 0.2 + (i / 10) * 0.8
+        for _, child in ipairs(frame:GetChildren()) do
+            if child:IsA("Frame") then
+                child.BackgroundTransparency = 0.2 + (i / 10) * 0.8
+            end
+        end
+        task.wait(0.02)
+    end
+    gui:Destroy()
+end
+
+local function toggleHitmarker()
+    State.hitmarker = not State.hitmarker
+    if State.hitmarker then
+        -- Подключаемся к событию получения урона (если есть)
+        pcall(function()
+            LocalPlayer.CharacterAdded:Connect(function(char)
+                local humanoid = char:WaitForChild("Humanoid")
+                humanoid.HealthChanged:Connect(function(health)
+                    if health < humanoid.MaxHealth then
+                        createHitmarker()
+                    end
+                end)
+            end)
+        end)
+    end
+end
+
+-- ====== CHANGE SKY ======
+local skyColors = {
+    {Color3.fromRGB(255, 100, 100), Color3.fromRGB(255, 200, 100)}, -- Закат
+    {Color3.fromRGB(100, 100, 255), Color3.fromRGB(200, 200, 255)}, -- День
+    {Color3.fromRGB(255, 0, 255), Color3.fromRGB(0, 255, 255)}, -- Радуга
+    {Color3.fromRGB(0, 0, 0), Color3.fromRGB(50, 50, 80)}, -- Ночь
+    {Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 200, 255)}, -- Снег
+}
+
+local function toggleSky()
+    State.skyChange = not State.skyChange
+    if skyConnection then
+        skyConnection:Disconnect()
+        skyConnection = nil
+    end
+    
+    if State.skyChange then
+        local index = 1
+        skyConnection = RunService.Heartbeat:Connect(function()
+            local sky = skyColors[index]
+            Lighting.Ambient = sky[1]
+            Lighting.OutdoorAmbient = sky[2]
+            Lighting.Brightness = 1
+            index = index % #skyColors + 1
+            task.wait(2)
+        end)
+    else
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.Brightness = 1
+    end
+end
+
+-- ====== BUNNY HOP ======
+local function toggleBunnyHop()
+    State.bunnyHop = not State.bunnyHop
+    if bunnyHopConnection then
+        bunnyHopConnection:Disconnect()
+        bunnyHopConnection = nil
+    end
+    
+    if State.bunnyHop then
+        bunnyHopConnection = RunService.Heartbeat:Connect(function()
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    local hum = char.Humanoid
+                    if hum.FloorMaterial ~= Enum.Material.Air then
+                        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- ====== SPIN BOT (FPP) ======
+local function toggleSpinBot()
+    State.spinBot = not State.spinBot
+    if spinConnection then
+        spinConnection:Disconnect()
+        spinConnection = nil
+    end
+    
+    if State.spinBot then
+        spinConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local current = root.Orientation
+                root.Orientation = Vector3.new(current.X, current.Y + 3, current.Z)
+            end
+        end)
+    end
+end
+
+-- ====== THIRD PERSON ======
+local function toggleThirdPerson()
+    State.thirdPerson = not State.thirdPerson
+    if thirdPersonConnection then
+        thirdPersonConnection:Disconnect()
+        thirdPersonConnection = nil
+    end
+    
+    if State.thirdPerson then
+        thirdPersonConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local pos = root.Position + Vector3.new(0, 2, 5)
+                Camera.CFrame = CFrame.new(pos, root.Position)
+            end
+        end)
+    else
+        Camera.CFrame = workspace.CurrentCamera.CFrame
+    end
+end
+
+-- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -437,160 +598,4 @@ local function showNativeKeyWindow()
     enterBtn.BackgroundTransparency = 0.2
     enterBtn.Text = "Войти"
     enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyVerified = true
-            keyGui:Destroy()
-            createMainUI()
-        else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-        end
-    end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
-end
-
--- ====== ТВОЙ GUI НА WINDUI ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
-        Folder = "WezexHub",
-        Icon = "solar:folder-2-bold-duotone",
-        OpenButton = {
-            Title = "Wezex Hub",
-            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-            Draggable = true,
-            Scale = 0.5,
-        },
-    })
-
-    -- ВКЛАДКА COMBAT
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Combat Settings",
-    })
-    CombatSection:Toggle({
-        Title = "Silent Aim",
-        Desc = "Автонаводка на голову",
-        Value = State.knifeAim,
-        Callback = function(v)
-            if v ~= State.knifeAim then
-                toggleKnifeAim()
-            end
-        end,
-    })
-
-    -- ВКЛАДКА MOVEMENT
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
-    MovementSection:Toggle({
-        Title = "Noclip",
-        Desc = "Проход сквозь стены",
-        Value = State.noclip,
-        Callback = function(v)
-            if v ~= State.noclip then
-                toggleNoclip()
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Knife Noclip",
-        Desc = "Нож пролетает сквозь стены",
-        Value = State.knifeNoclip,
-        Callback = function(v)
-            if v ~= State.knifeNoclip then
-                toggleKnifeNoclip()
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Infinity Jump",
-        Desc = "Бесконечные прыжки",
-        Value = State.infJump,
-        Callback = function(v)
-            if v ~= State.infJump then
-                toggleInfJump()
-            end
-        end,
-    })
-
-    -- ВКЛАДКА VISUALS
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
-    })
-    VisualsSection:Toggle({
-        Title = "ESP (Duels)",
-        Desc = "Подсветка игроков",
-        Value = State.esp,
-        Callback = function(v)
-            if v ~= State.esp then
-                toggleESP()
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Knife Trail",
-        Desc = "Красивая линия за ножом",
-        Value = State.knifeTrail,
-        Callback = function(v)
-            if v ~= State.knifeTrail then
-                toggleKnifeTrail()
-            end
-        end,
-    })
-
-    -- ВКЛАДКА ABOUT
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
-    })
-    AboutSection:Button({
-        Title = "Destroy Window",
-        Color = Color3.fromRGB(255, 50, 50),
-        Callback = function()
-            Window:Destroy()
-        end,
-    })
-
-    -- Синхронизация
-    if State.esp then toggleESP() end
-    if State.knifeAim then toggleKnifeAim() end
-    if State.noclip then toggleNoclip() end
-    if State.knifeNoclip then toggleKnifeNoclip() end
-    if State.infJump then toggleInfJump() end
-    if State.knifeTrail then toggleKnifeTrail() end
-end
-
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+    enterBtn.TextColor3 = Color3.
