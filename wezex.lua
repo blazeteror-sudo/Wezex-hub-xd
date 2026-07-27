@@ -1,4 +1,4 @@
--- WEZEX HUB (TOGGLE SWITCH STYLE)
+-- WEZEX HUB (RAINBOW + DRAGGABLE + WELCOME)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    if CoreGui:FindFirstChild("SplashScreen") then CoreGui.SplashScreen:Destroy() end
 end)
 
 local CORRECT_KEY = "38399923"
@@ -30,8 +31,9 @@ local espHighlights = {}
 local espConnections = {}
 local originalThrow = nil
 local KnifeController = nil
-local currentTab = "Combat"
-local contentContainer = nil
+local rainbowConnection = nil
+local dragging = false
+local dragStart, startPos = nil, nil
 
 -- ====== ESP ======
 local function clearESP()
@@ -200,6 +202,47 @@ local function toggleInfJump()
     end
 end
 
+-- ====== РАДУЖНЫЙ ЦВЕТ ======
+local function getRainbowColor(offset)
+    local time = tick() * 0.3
+    local r = math.sin(time + offset) * 0.5 + 0.5
+    local g = math.sin(time + offset + 2.09) * 0.5 + 0.5
+    local b = math.sin(time + offset + 4.18) * 0.5 + 0.5
+    return Color3.new(r, g, b)
+end
+
+-- ====== ПЕРЕТАСКИВАНИЕ (ДЛЯ ТЕЛЕФОНА) ======
+local function makeDraggable(frame)
+    local dragging = false
+    local dragStart, startPos = nil, nil
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
 -- ====== СНЕГ ======
 local function stopSnow()
     if snowConnection then
@@ -270,86 +313,6 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ====== КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ (TOGGLE SWITCH) ======
-local function createToggleSwitch(label, stateKey, callback, parent)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0.95, 0, 0, 28)
-    frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-    frame.BackgroundTransparency = 0.4
-    frame.Parent = parent
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.6, 0, 1, 0)
-    lbl.Position = UDim2.new(0.04, 0, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 12
-    lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
-    lbl.Text = label
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-
-    -- КОНТЕЙНЕР ДЛЯ СВИТЧА
-    local switchContainer = Instance.new("Frame")
-    switchContainer.Size = UDim2.new(0, 40, 0, 22)
-    switchContainer.Position = UDim2.new(1, -46, 0.5, -11)
-    switchContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    switchContainer.BorderSizePixel = 0
-    switchContainer.Parent = frame
-    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-
-    -- КРУГЛАЯ РУЧКА
-    local handle = Instance.new("TextButton")
-    handle.Size = UDim2.new(0, 18, 0, 18)
-    handle.Position = UDim2.new(0, 2, 0.5, -9)
-    handle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-    handle.BorderSizePixel = 0
-    handle.Text = ""
-    handle.Parent = switchContainer
-    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-
-    local function updateSwitch()
-        if State[stateKey] then
-            switchContainer.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-            handle.Position = UDim2.new(0, 20, 0.5, -9)
-            handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            switchContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-            handle.Position = UDim2.new(0, 2, 0.5, -9)
-            handle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        end
-    end
-    updateSwitch()
-
-    handle.MouseButton1Click:Connect(function()
-        callback()
-        updateSwitch()
-    end)
-
-    -- Клик по всему контейнеру тоже работает
-    switchContainer.MouseButton1Click:Connect(function()
-        callback()
-        updateSwitch()
-    end)
-end
-
-local function updateContent()
-    if not contentContainer then return end
-    for _, child in ipairs(contentContainer:GetChildren()) do
-        child:Destroy()
-    end
-
-    if currentTab == "Combat" then
-        createToggleSwitch("Silent Aim", "knifeAim", toggleKnifeAim, contentContainer)
-    elseif currentTab == "Movement" then
-        createToggleSwitch("Noclip", "noclip", toggleNoclip, contentContainer)
-        createToggleSwitch("Infinity Jump", "infJump", toggleInfJump, contentContainer)
-    elseif currentTab == "Visuals" then
-        createToggleSwitch("ESP (Duels)", "esp", toggleESP, contentContainer)
-    end
-end
-
 -- ====== ГЛАВНОЕ МЕНЮ ======
 function createMainGUI()
     pcall(function()
@@ -363,6 +326,26 @@ function createMainGUI()
     screenGui.IgnoreGuiInset = true
     screenGui.Enabled = true
 
+    -- РАДУЖНАЯ ОБВОДКА (GLOW)
+    local glowFrame = Instance.new("Frame")
+    glowFrame.Size = UDim2.new(0, 224, 0, 184)
+    glowFrame.Position = UDim2.new(0.5, -112, 0.5, -92)
+    glowFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    glowFrame.BackgroundTransparency = 0.2
+    glowFrame.BorderSizePixel = 0
+    glowFrame.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
+
+    -- Анимация радужной обводки
+    local glowBlur = Instance.new("BlurEffect")
+    glowBlur.Size = 10
+    glowBlur.Parent = glowFrame
+
+    rainbowConnection = RunService.RenderStepped:Connect(function()
+        glowFrame.BackgroundColor3 = getRainbowColor(0)
+    end)
+
+    -- КНОПКА ОТКРЫТИЯ
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -375,41 +358,49 @@ function createMainGUI()
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
     openBtn.Visible = false
+    makeDraggable(openBtn)
 
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openBtn.Visible = false
+        glowFrame.Visible = true
     end)
 
+    -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 170)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -85)
+    mainFrame.Size = UDim2.new(0, 220, 0, 180)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
     mainFrame.ClipsDescendants = true
     mainFrame.Visible = true
+    makeDraggable(mainFrame)
 
-    -- ЗАГОЛОВОК
+    -- РАДУЖНЫЙ ЗАГОЛОВОК
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 26)
+    title.Size = UDim2.new(1, 0, 0, 30)
     title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
-    title.TextSize = 16
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.TextSize = 18
     title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = mainFrame
 
+    -- Анимация радужного заголовка
+    RunService.RenderStepped:Connect(function()
+        title.TextColor3 = getRainbowColor(0.5)
+    end)
+
     -- КНОПКА ЗАКРЫТИЯ
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 22, 0, 22)
-    closeBtn.Position = UDim2.new(1, -28, 0, 4)
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -30, 0, 4)
     closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
     closeBtn.Text = "✕"
-    closeBtn.TextSize = 12
+    closeBtn.TextSize = 14
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Parent = mainFrame
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
@@ -417,74 +408,90 @@ function createMainGUI()
     closeBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = false
         openBtn.Visible = true
+        glowFrame.Visible = false
     end)
 
-    -- КОНТЕЙНЕР ТАБОВ
-    local tabContainer = Instance.new("Frame")
-    tabContainer.Size = UDim2.new(1, -14, 0, 26)
-    tabContainer.Position = UDim2.new(0, 7, 0, 34)
-    tabContainer.BackgroundTransparency = 1
-    tabContainer.Parent = mainFrame
+    -- КОНТЕЙНЕР
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -14, 1, -48)
+    content.Position = UDim2.new(0, 7, 0, 40)
+    content.BackgroundTransparency = 1
+    content.Parent = mainFrame
 
-    local tabs = {"Combat", "Movement", "Visuals"}
-    local tabButtons = {}
-    local tabWidth = 0.28
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = content
 
-    for i, name in ipairs(tabs) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(tabWidth, 0, 1, 0)
-        btn.Position = UDim2.new(0.02 + (i - 1) * (tabWidth + 0.02), 0, 0, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
-        btn.BackgroundTransparency = 0.3
-        btn.Text = name
-        btn.TextSize = 10
-        btn.TextColor3 = Color3.fromRGB(200, 200, 255)
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = tabContainer
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    -- ФУНКЦИЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ (С РАДУЖНЫМИ ЦВЕТАМИ)
+    local function createToggle(label, stateKey, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 28)
+        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+        frame.BackgroundTransparency = 0.4
+        frame.Parent = content
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-        btn.MouseButton1Click:Connect(function()
-            currentTab = name
-            updateContent()
-            for _, b in ipairs(tabButtons) do
-                b.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
-                b.BackgroundTransparency = 0.3
-            end
-            btn.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
-            btn.BackgroundTransparency = 0.2
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.55, 0, 1, 0)
+        lbl.Position = UDim2.new(0.04, 0, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 11
+        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
+        lbl.Text = label
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = frame
+
+        -- Радужный цвет для текста
+        RunService.RenderStepped:Connect(function()
+            lbl.TextColor3 = getRainbowColor(1.0)
         end)
 
-        table.insert(tabButtons, btn)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 48, 0, 20)
+        btn.Position = UDim2.new(1, -54, 0.5, -10)
+        btn.TextSize = 9
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = frame
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+
+        local function updateButton()
+            if State[stateKey] then
+                btn.BackgroundColor3 = getRainbowColor(0)
+                btn.Text = "ON"
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                btn.Text = "OFF"
+            end
+        end
+        updateButton()
+
+        btn.MouseButton1Click:Connect(function()
+            callback()
+            updateButton()
+        end)
     end
 
-    tabButtons[1].BackgroundColor3 = Color3.fromRGB(100, 80, 200)
-    tabButtons[1].BackgroundTransparency = 0.2
-    currentTab = "Combat"
+    createToggle("ESP (Duels)", "esp", toggleESP)
+    createToggle("Silent Aim", "knifeAim", toggleKnifeAim)
+    createToggle("Noclip", "noclip", toggleNoclip)
+    createToggle("Infinity Jump", "infJump", toggleInfJump)
 
-    -- КОНТЕЙНЕР ДЛЯ КНОПОК
-    contentContainer = Instance.new("Frame")
-    contentContainer.Size = UDim2.new(1, -10, 1, -68)
-    contentContainer.Position = UDim2.new(0, 5, 0, 66)
-    contentContainer.BackgroundTransparency = 1
-    contentContainer.Parent = mainFrame
-
-    local contentLayout = Instance.new("UIListLayout")
-    contentLayout.FillDirection = Enum.FillDirection.Vertical
-    contentLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    contentLayout.Padding = UDim.new(0, 4)
-    contentLayout.Parent = contentContainer
-
-    updateContent()
-
+    -- КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightBracket then
             if mainFrame.Visible then
                 mainFrame.Visible = false
                 openBtn.Visible = true
+                glowFrame.Visible = false
             else
                 mainFrame.Visible = true
                 openBtn.Visible = false
+                glowFrame.Visible = true
             end
         end
     end)
@@ -494,6 +501,64 @@ function createMainGUI()
 
     mainFrame.Visible = true
     openBtn.Visible = false
+    glowFrame.Visible = true
+end
+
+-- ====== ПРИВЕТСТВИЕ ======
+local function showWelcome()
+    local splashGui = Instance.new("ScreenGui")
+    splashGui.Name = "SplashScreen"
+    splashGui.Parent = CoreGui
+    splashGui.ResetOnSpawn = false
+    splashGui.IgnoreGuiInset = true
+
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.BorderSizePixel = 0
+    overlay.Parent = splashGui
+
+    local mainText = Instance.new("TextLabel")
+    mainText.Size = UDim2.new(1, 0, 0, 70)
+    mainText.Position = UDim2.new(0, 0, 0.3, 0)
+    mainText.BackgroundTransparency = 1
+    mainText.Font = Enum.Font.GothamBlack
+    mainText.TextSize = 50
+    mainText.Text = "ДОБРО ПОЖАЛОВАТЬ"
+    mainText.TextXAlignment = Enum.TextXAlignment.Center
+    mainText.TextYAlignment = Enum.TextYAlignment.Center
+    mainText.Parent = splashGui
+
+    local subText = Instance.new("TextLabel")
+    subText.Size = UDim2.new(1, 0, 0, 40)
+    subText.Position = UDim2.new(0, 0, 0.45, 0)
+    subText.BackgroundTransparency = 1
+    subText.Font = Enum.Font.GothamBold
+    subText.TextSize = 28
+    subText.Text = "Wezex Hub v4.1"
+    subText.TextXAlignment = Enum.TextXAlignment.Center
+    subText.TextYAlignment = Enum.TextYAlignment.Center
+    subText.Parent = splashGui
+
+    -- Анимация радужного текста
+    RunService.RenderStepped:Connect(function()
+        mainText.TextColor3 = getRainbowColor(0)
+        subText.TextColor3 = getRainbowColor(1.5)
+    end)
+
+    task.wait(2)
+
+    for i = 0, 10 do
+        local alpha = 1 - (i / 10)
+        overlay.BackgroundTransparency = 1 - alpha * 0.5
+        mainText.TextTransparency = 1 - alpha
+        subText.TextTransparency = 1 - alpha
+        task.wait(0.05)
+    end
+
+    splashGui:Destroy()
+    showKeyWindow()
 end
 
 -- ====== ОКНО КЛЮЧА ======
@@ -517,55 +582,9 @@ local function showKeyWindow()
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
     title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = panel
 
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
-    keyBox.Font = Enum.Font.GothamBold
-    keyBox.TextSize = 16
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.PlaceholderText = "Ключ"
-    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
-    enterBtn.Text = "Войти"
-    enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyGui:Destroy()
-            createMainGUI()
-        else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-        end
-    end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-end
-
-showKeyWindow()
+    -- Радужный заголовок в окне ключа
+    Run
