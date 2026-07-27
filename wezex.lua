@@ -1,5 +1,5 @@
--- WEZEX HUB (WINDUI EDITION)
--- KEY: 38399923
+-- WEZEX HUB (WINDUI + KEYSYSTEM)
+-- КЛЮЧ: 38399923
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -28,6 +28,26 @@ local State = {
     noclip = false,
     infJump = false,
 }
+
+-- ====== КЛЮЧ-СИСТЕМА ======
+local CORRECT_KEY = "38399923"
+
+local function validateKey(userInput)
+    if userInput == CORRECT_KEY then
+        return true, "Доступ разрешен!"
+    else
+        return false, "Неверный ключ. Попробуйте снова."
+    end
+end
+
+local function copyLink()
+    setclipboard("https://discord.gg/your-invite") -- замени на свой Discord
+    WindUI:Notify({
+        Title = "Система Ключей",
+        Content = "Ссылка на получение ключа скопирована!",
+        Duration = 5
+    })
+end
 
 -- ====== ESP ======
 local espHighlights = {}
@@ -202,11 +222,19 @@ local function toggleInfJump()
     end
 end
 
--- ====== СОЗДАНИЕ WINDUI ======
+-- ====== СОЗДАНИЕ WINDUI С КЛЮЧ-СИСТЕМОЙ ======
 local Window = WindUI:CreateWindow({
     Title = "Wezex Hub v4.1",
     Folder = "WezexHub",
     Icon = "solar:folder-2-bold-duotone",
+    KeySystem = true,
+    KeySettings = {
+        Title = "🔑 Проверка ключа",
+        Description = "Введите действующий ключ для активации Wezex Hub",
+        Link = "https://discord.gg/your-invite", -- замени на свой Discord
+        Verify = validateKey,
+        Copy = copyLink,
+    },
     OpenButton = {
         Title = "Wezex Hub",
         Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
