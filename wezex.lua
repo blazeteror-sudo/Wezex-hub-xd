@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - STABLE v1.0
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - WITH KNIFE TRAIL
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -31,7 +31,9 @@ local State = {
     esp = false,
     knifeAim = false,
     noclip = false,
+    knifeNoclip = false,
     infJump = false,
+    knifeTrail = false,
 }
 
 -- ====== ESP ======
@@ -91,37 +93,9 @@ local function toggleESP()
     end
 end
 
--- ====== SILENT AIM (WALLBANG + EXTREME RANGE) ======
-getgenv().KnifeConfig = {
-    Enabled = false,
-    HitPart = "Head",
-    FOV = 999999,
-    Range = math.huge,
-}
-
+-- ====== СТАРЫЙ SILENT AIM ======
+getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
 local originalThrow = nil
-local originalStart = nil
-local originalGetTarget = nil
-
-local function getFurthestTarget()
-    local best = nil
-    local maxDist = -1
-    local origin = Camera.CFrame.Position
-    
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-            local part = plr.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or plr.Character:FindFirstChild("HumanoidRootPart")
-            if part then
-                local dist = (part.Position - origin).Magnitude
-                if dist > maxDist then
-                    maxDist = dist
-                    best = plr
-                end
-            end
-        end
-    end
-    return best
-end
 
 local function getClosestTarget()
     local best, bestFOV = nil, getgenv().KnifeConfig.FOV
@@ -138,50 +112,7 @@ local function getClosestTarget()
             end
         end
     end
-    if not best then
-        best = getFurthestTarget()
-    end
     return best
-end
-
--- Перехватываем создание ножа
-local function hookKnifeCreation()
-    local function disableKnifeCollisions()
-        for _, knife in ipairs(workspace:GetDescendants()) do
-            if knife:IsA("BasePart") and knife.Name and string.find(knife.Name:lower(), "knife") then
-                pcall(function()
-                    knife.CanCollide = false
-                    knife.CanTouch = false
-                    knife:SetAttribute("WezexWallbang", true)
-                end)
-            end
-        end
-    end
-    
-    -- Отключаем коллизии у новых ножей при их появлении
-    local connection = workspace.ChildAdded:Connect(function(child)
-        task.wait(0.05)
-        if child:IsA("BasePart") and child.Name and string.find(child.Name:lower(), "knife") then
-            pcall(function()
-                child.CanCollide = false
-                child.CanTouch = false
-                child:SetAttribute("WezexWallbang", true)
-            end)
-        end
-    end)
-    
-    -- Периодическая проверка
-    local loopConnection = RunService.Heartbeat:Connect(function()
-        if not getgenv().KnifeConfig.Enabled then return end
-        disableKnifeCollisions()
-    end)
-    
-    -- Сохраняем подключения, чтобы потом отключить
-    if not _G.WezexKnifeHooks then
-        _G.WezexKnifeHooks = {}
-    end
-    table.insert(_G.WezexKnifeHooks, connection)
-    table.insert(_G.WezexKnifeHooks, loopConnection)
 end
 
 local function applyKnifeAim()
@@ -200,14 +131,6 @@ local function applyKnifeAim()
         if not originalThrow then
             originalThrow = KnifeController._GetThrowDirection
         end
-        if not originalStart then
-            originalStart = KnifeController._GetThrowStartPosition
-        end
-
-        -- Включаем хуки для ножей
-        hookKnifeCreation()
-
-        -- Перехватываем направление
         KnifeController._GetThrowDirection = function(self, origin)
             if getgenv().KnifeConfig.Enabled then
                 local target = getClosestTarget()
@@ -220,68 +143,10 @@ local function applyKnifeAim()
             end
             return originalThrow(self, origin)
         end
-
-        -- Перехватываем стартовую позицию (спавним нож прямо у цели)
-        KnifeController._GetThrowStartPosition = function(self)
-            if getgenv().KnifeConfig.Enabled then
-                local target = getClosestTarget()
-                if target and target.Character then
-                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or target.Character:FindFirstChild("HumanoidRootPart")
-                    if part then
-                        return part.Position + Vector3.new(0, 2, 0)
-                    end
-                end
-            end
-            return originalStart(self)
-        end
-        
-        -- Перехватываем метод поиска цели в самом контроллере (если есть)
-        if KnifeController.GetTarget then
-            if not originalGetTarget then
-                originalGetTarget = KnifeController.GetTarget
-            end
-            KnifeController.GetTarget = function(self)
-                if getgenv().KnifeConfig.Enabled then
-                    local target = getClosestTarget()
-                    if target and target.Character then
-                        return target.Character
-                    end
-                end
-                return originalGetTarget(self)
-            end
-        end
     else
-        -- Восстанавливаем оригинальные методы
         if originalThrow and KnifeController then
             KnifeController._GetThrowDirection = originalThrow
             originalThrow = nil
-        end
-        if originalStart and KnifeController then
-            KnifeController._GetThrowStartPosition = originalStart
-            originalStart = nil
-        end
-        if originalGetTarget and KnifeController then
-            KnifeController.GetTarget = originalGetTarget
-            originalGetTarget = nil
-        end
-        
-        -- Отключаем хуки ножей
-        if _G.WezexKnifeHooks then
-            for _, hook in ipairs(_G.WezexKnifeHooks) do
-                pcall(function() hook:Disconnect() end)
-            end
-            _G.WezexKnifeHooks = {}
-        end
-        
-        -- Восстанавливаем коллизии у ножей (опционально)
-        for _, knife in ipairs(workspace:GetDescendants()) do
-            if knife:IsA("BasePart") and knife:GetAttribute("WezexWallbang") then
-                pcall(function()
-                    knife.CanCollide = true
-                    knife.CanTouch = true
-                    knife:SetAttribute("WezexWallbang", nil)
-                end)
-            end
         end
     end
 end
@@ -292,7 +157,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- ====== NOCLIP ======
+-- ====== NOCLIP ДЛЯ ПЕРСОНАЖА ======
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -324,6 +189,61 @@ local function toggleNoclip()
     end
 end
 
+-- ====== NOCLIP ДЛЯ НОЖА ======
+local knifeNoclipConnection = nil
+local function toggleKnifeNoclip()
+    State.knifeNoclip = not State.knifeNoclip
+    if State.knifeNoclip then
+        if knifeNoclipConnection then knifeNoclipConnection:Disconnect() end
+        knifeNoclipConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
+                    pcall(function()
+                        part.CanCollide = false
+                        part.CanTouch = false
+                    end)
+                end
+            end
+            
+            for _, knife in ipairs(workspace:GetDescendants()) do
+                if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
+                    pcall(function()
+                        knife.CanCollide = false
+                        knife.CanTouch = false
+                    end)
+                end
+            end
+        end)
+    else
+        if knifeNoclipConnection then
+            knifeNoclipConnection:Disconnect()
+            knifeNoclipConnection = nil
+        end
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
+                    pcall(function()
+                        part.CanCollide = true
+                        part.CanTouch = true
+                    end)
+                end
+            end
+        end
+        for _, knife in ipairs(workspace:GetDescendants()) do
+            if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
+                pcall(function()
+                    knife.CanCollide = true
+                    knife.CanTouch = true
+                end)
+            end
+        end
+    end
+end
+
 -- ====== INFINITE JUMP ======
 local infJumpConnection = nil
 local function toggleInfJump()
@@ -341,6 +261,115 @@ local function toggleInfJump()
             infJumpConnection:Disconnect()
             infJumpConnection = nil
         end
+    end
+end
+
+-- ====== KNIFE TRAIL (КРАСИВАЯ ЛИНИЯ ЗА НОЖОМ) ======
+local trailConnections = {}
+local trailParts = {}
+
+local function createTrail(knife)
+    if not State.knifeTrail then return end
+    
+    local trail = Instance.new("Trail")
+    trail.Name = "WezexKnifeTrail"
+    trail.Parent = knife
+    trail.Attachment0 = Instance.new("Attachment")
+    trail.Attachment0.Parent = knife
+    trail.Attachment0.Position = Vector3.new(0, 0, 0)
+    
+    -- Настройки трейла
+    trail.Lifetime = 0.3
+    trail.MinLength = 0.5
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.8),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    
+    -- Радужный цвет для трейла
+    trail.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+    })
+    
+    trail.Width = NumberSequence.new(0.15)
+    
+    table.insert(trailParts, trail)
+end
+
+local function clearTrails()
+    for _, trail in ipairs(trailParts) do
+        if trail and trail.Parent then
+            trail:Destroy()
+        end
+    end
+    trailParts = {}
+end
+
+local function setupKnifeTrail()
+    -- Очищаем старые подключения
+    for _, conn in ipairs(trailConnections) do
+        conn:Disconnect()
+    end
+    trailConnections = {}
+    clearTrails()
+    
+    if not State.knifeTrail then return end
+    
+    -- Следим за появлением новых ножей
+    local function checkKnives()
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name and string.find(string.lower(part.Name), "knife") then
+                if not part:FindFirstChild("WezexKnifeTrail") then
+                    createTrail(part)
+                end
+            end
+        end
+        
+        -- Также проверяем ножи в workspace (летящие)
+        for _, knife in ipairs(workspace:GetDescendants()) do
+            if knife:IsA("BasePart") and knife.Name and string.find(string.lower(knife.Name), "knife") then
+                if not knife:FindFirstChild("WezexKnifeTrail") then
+                    createTrail(knife)
+                end
+            end
+        end
+    end
+    
+    -- Подключаем проверку
+    local conn = RunService.Heartbeat:Connect(checkKnives)
+    table.insert(trailConnections, conn)
+    
+    -- Проверяем при добавлении новых объектов
+    local childConn = workspace.ChildAdded:Connect(function(child)
+        task.wait(0.05)
+        if child:IsA("BasePart") and child.Name and string.find(string.lower(child.Name), "knife") then
+            if not child:FindFirstChild("WezexKnifeTrail") then
+                createTrail(child)
+            end
+        end
+    end)
+    table.insert(trailConnections, childConn)
+    
+    -- Первоначальная проверка
+    checkKnives()
+end
+
+local function toggleKnifeTrail()
+    State.knifeTrail = not State.knifeTrail
+    if State.knifeTrail then
+        setupKnifeTrail()
+    else
+        for _, conn in ipairs(trailConnections) do
+            conn:Disconnect()
+        end
+        trailConnections = {}
+        clearTrails()
     end
 end
 
@@ -461,7 +490,7 @@ function createMainUI()
     })
     CombatSection:Toggle({
         Title = "Silent Aim",
-        Desc = "Автонаводка через стены (Wallbang)",
+        Desc = "Автонаводка на голову",
         Value = State.knifeAim,
         Callback = function(v)
             if v ~= State.knifeAim then
@@ -485,6 +514,16 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.noclip then
                 toggleNoclip()
+            end
+        end,
+    })
+    MovementSection:Toggle({
+        Title = "Knife Noclip",
+        Desc = "Нож пролетает сквозь стены",
+        Value = State.knifeNoclip,
+        Callback = function(v)
+            if v ~= State.knifeNoclip then
+                toggleKnifeNoclip()
             end
         end,
     })
@@ -517,6 +556,16 @@ function createMainUI()
             end
         end,
     })
+    VisualsSection:Toggle({
+        Title = "Knife Trail",
+        Desc = "Красивая линия за ножом",
+        Value = State.knifeTrail,
+        Callback = function(v)
+            if v ~= State.knifeTrail then
+                toggleKnifeTrail()
+            end
+        end,
+    })
 
     -- ВКЛАДКА ABOUT
     local AboutTab = Window:Tab({
@@ -538,7 +587,9 @@ function createMainUI()
     if State.esp then toggleESP() end
     if State.knifeAim then toggleKnifeAim() end
     if State.noclip then toggleNoclip() end
+    if State.knifeNoclip then toggleKnifeNoclip() end
     if State.infJump then toggleInfJump() end
+    if State.knifeTrail then toggleKnifeTrail() end
 end
 
 -- ====== ЗАПУСК ======
