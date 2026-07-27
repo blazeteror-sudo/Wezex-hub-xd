@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - STABLE v1.0
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -34,8 +34,7 @@ local State = {
     infJump = false,
 }
 
--- ====== НАШИ ФУНКЦИИ ======
--- ESP
+-- ====== ESP ======
 local espHighlights = {}
 local espConnections = {}
 
@@ -92,9 +91,36 @@ local function toggleESP()
     end
 end
 
--- Silent Aim
-getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
+-- ====== SILENT AIM (WALLBANG + EXTREME RANGE) ======
+getgenv().KnifeConfig = {
+    Enabled = false,
+    HitPart = "Head",
+    FOV = 999999,
+    Range = math.huge,
+}
+
 local originalThrow = nil
+local originalStart = nil
+
+local function getFurthestTarget()
+    local best = nil
+    local maxDist = -1
+    local origin = Camera.CFrame.Position
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            local part = plr.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or plr.Character:FindFirstChild("HumanoidRootPart")
+            if part then
+                local dist = (part.Position - origin).Magnitude
+                if dist > maxDist then
+                    maxDist = dist
+                    best = plr
+                end
+            end
+        end
+    end
+    return best
+end
 
 local function getClosestTarget()
     local best, bestFOV = nil, getgenv().KnifeConfig.FOV
@@ -110,6 +136,9 @@ local function getClosestTarget()
                 end
             end
         end
+    end
+    if not best then
+        best = getFurthestTarget()
     end
     return best
 end
@@ -130,6 +159,11 @@ local function applyKnifeAim()
         if not originalThrow then
             originalThrow = KnifeController._GetThrowDirection
         end
+        if not originalStart then
+            originalStart = KnifeController._GetThrowStartPosition
+        end
+
+        -- Перехватываем направление
         KnifeController._GetThrowDirection = function(self, origin)
             if getgenv().KnifeConfig.Enabled then
                 local target = getClosestTarget()
@@ -142,10 +176,28 @@ local function applyKnifeAim()
             end
             return originalThrow(self, origin)
         end
+
+        -- Перехватываем начальную позицию, чтобы игнорировать стены
+        KnifeController._GetThrowStartPosition = function(self)
+            if getgenv().KnifeConfig.Enabled then
+                local target = getClosestTarget()
+                if target and target.Character then
+                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or target.Character:FindFirstChild("HumanoidRootPart")
+                    if part then
+                        return part.Position - Vector3.new(0, 0, 5)
+                    end
+                end
+            end
+            return originalStart(self)
+        end
     else
         if originalThrow and KnifeController then
             KnifeController._GetThrowDirection = originalThrow
             originalThrow = nil
+        end
+        if originalStart and KnifeController then
+            KnifeController._GetThrowStartPosition = originalStart
+            originalStart = nil
         end
     end
 end
@@ -156,7 +208,7 @@ local function toggleKnifeAim()
     applyKnifeAim()
 end
 
--- Noclip
+-- ====== NOCLIP ======
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -188,7 +240,7 @@ local function toggleNoclip()
     end
 end
 
--- Infinity Jump
+-- ====== INFINITE JUMP ======
 local infJumpConnection = nil
 local function toggleInfJump()
     State.infJump = not State.infJump
@@ -210,7 +262,6 @@ end
 
 -- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
 local function showNativeKeyWindow()
-    -- Очистка
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
@@ -326,7 +377,7 @@ function createMainUI()
     })
     CombatSection:Toggle({
         Title = "Silent Aim",
-        Desc = "Автоматическая наводка на голову",
+        Desc = "Автонаводка через стены (Wallbang)",
         Value = State.knifeAim,
         Callback = function(v)
             if v ~= State.knifeAim then
