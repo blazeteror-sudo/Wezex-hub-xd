@@ -1,6 +1,5 @@
--- Wezex Hub v4.1 + YOUR BACKGROUND IMAGE
+-- Wezex Hub v4.1 + SPLASH SCREEN
 -- KEY: 38399923
--- BACKGROUND ID: 9767778028
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -8,12 +7,14 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local KnifeController
 
 -- Очистка
 pcall(function()
     if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    if CoreGui:FindFirstChild("SplashScreen") then CoreGui.SplashScreen:Destroy() end
 end)
 
 local CORRECT_KEY = "38399923"
@@ -408,17 +409,12 @@ function createMainGUI()
         isOpen = true
     end)
 
-    -- ОСНОВНОЕ МЕНЮ С КАРТИНКОЙ НА ФОНЕ
+    -- ОСНОВНОЕ МЕНЮ
     mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 220, 0, 180)
     mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
-    
-    -- ВСТАВЛЯЕМ КАРТИНКУ
-    mainFrame.BackgroundImage = "rbxassetid://9767778028"  -- ваш ID
-    mainFrame.BackgroundImageTransparency = 0.2  -- прозрачность картинки (0 = не прозрачна, 1 = полностью прозрачна)
-    mainFrame.BackgroundTransparency = 0.5       -- прозрачность фона фрейма (чтобы видеть игру сквозь)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- цвет подложки
-    
+    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
+    mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
@@ -560,4 +556,39 @@ function createMainGUI()
     if State.infJump then toggleInfJump() end
 end
 
-showKeyWindow()
+-- ========== SPLASH SCREEN ==========
+local function showSplashScreen()
+    local splashGui = Instance.new("ScreenGui")
+    splashGui.Name = "SplashScreen"
+    splashGui.Parent = CoreGui
+    splashGui.ResetOnSpawn = false
+    splashGui.IgnoreGuiInset = true
+
+    -- Затемнение
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.BorderSizePixel = 0
+    overlay.Parent = splashGui
+
+    -- Основной текст (большой, яркий)
+    local mainText = Instance.new("TextLabel")
+    mainText.Size = UDim2.new(1, 0, 0, 60)
+    mainText.Position = UDim2.new(0, 0, 0.35, 0)
+    mainText.BackgroundTransparency = 1
+    mainText.Font = Enum.Font.GothamBlack
+    mainText.TextSize = 48
+    mainText.TextColor3 = Color3.fromRGB(200, 150, 255)
+    mainText.Text = "ДОБРО ПОЖАЛОВАТЬ"
+    mainText.TextXAlignment = Enum.TextXAlignment.Center
+    mainText.TextYAlignment = Enum.TextYAlignment.Center
+    mainText.Parent = splashGui
+
+    -- Подзаголовок
+    local subText = Instance.new("TextLabel")
+    subText.Size = UDim2.new(1, 0, 0, 40)
+    subText.Position = UDim2.new(0, 0, 0.5, 0)
+    subText.BackgroundTransparency = 1
+    subText.Font = Enum.Font.GothamBold
+  
