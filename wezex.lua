@@ -1,4 +1,4 @@
--- WEZEX HUB (CATEGORIES)
+-- WEZEX HUB (TAB MENU)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -30,6 +30,8 @@ local espHighlights = {}
 local espConnections = {}
 local originalThrow = nil
 local KnifeController = nil
+local currentTab = "Combat"
+local contentContainer = nil
 
 -- ====== ESP ======
 local function clearESP()
@@ -219,7 +221,7 @@ local function createSnow(parentFrame)
         task.wait(0.1)
     end
 
-    local count = 25
+    local count = 20
     for i = 1, count do
         local snow = Instance.new("Frame")
         snow.Size = UDim2.new(0, math.random(2, 4), 0, math.random(2, 4))
@@ -268,6 +270,100 @@ local function createSnow(parentFrame)
     end)
 end
 
+-- ====== ТАБЫ ======
+local function createTabButton(text, tabName, parent)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.3, 0, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+    btn.BackgroundTransparency = 0.3
+    btn.Text = text
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = parent
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
+    btn.MouseButton1Click:Connect(function()
+        currentTab = tabName
+        updateContent()
+        -- Подсветка активной вкладки
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("TextButton") then
+                if child == btn then
+                    child.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+                    child.BackgroundTransparency = 0.2
+                else
+                    child.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+                    child.BackgroundTransparency = 0.3
+                end
+            end
+        end
+    end)
+
+    return btn
+end
+
+local function createToggle(label, stateKey, callback, parent)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.9, 0, 0, 26)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+    frame.BackgroundTransparency = 0.4
+    frame.Parent = parent
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.6, 0, 1, 0)
+    lbl.Position = UDim2.new(0.04, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 11
+    lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
+    lbl.Text = label
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 44, 0, 18)
+    btn.Position = UDim2.new(1, -50, 0.5, -9)
+    btn.TextSize = 9
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = frame
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
+    local function updateButton()
+        if State[stateKey] then
+            btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+            btn.Text = "ON"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+            btn.Text = "OFF"
+        end
+    end
+    updateButton()
+
+    btn.MouseButton1Click:Connect(function()
+        callback()
+        updateButton()
+    end)
+end
+
+local function updateContent()
+    if not contentContainer then return end
+    for _, child in ipairs(contentContainer:GetChildren()) do
+        child:Destroy()
+    end
+
+    if currentTab == "Combat" then
+        createToggle("Silent Aim", "knifeAim", toggleKnifeAim, contentContainer)
+    elseif currentTab == "Movement" then
+        createToggle("Noclip", "noclip", toggleNoclip, contentContainer)
+        createToggle("Infinity Jump", "infJump", toggleInfJump, contentContainer)
+    elseif currentTab == "Visuals" then
+        createToggle("ESP (Duels)", "esp", toggleESP, contentContainer)
+    end
+end
+
 -- ====== ГЛАВНОЕ МЕНЮ ======
 function createMainGUI()
     pcall(function()
@@ -300,8 +396,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 240, 0, 280)
-    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -140)
+    mainFrame.Size = UDim2.new(0, 220, 0, 220)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -110)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
@@ -337,91 +433,43 @@ function createMainGUI()
         openBtn.Visible = true
     end)
 
-    -- КОНТЕЙНЕР
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -14, 1, -48)
-    content.Position = UDim2.new(0, 7, 0, 40)
-    content.BackgroundTransparency = 1
-    content.Parent = mainFrame
+    -- КОНТЕЙНЕР ТАБОВ
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Size = UDim2.new(1, -14, 0, 28)
+    tabContainer.Position = UDim2.new(0, 7, 0, 38)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.Parent = mainFrame
 
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.VerticalAlignment = Enum.VerticalAlignment.Top
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 8)
-    layout.Parent = content
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tabLayout.Padding = UDim.new(0, 6)
+    tabLayout.Parent = tabContainer
 
-    -- ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ЗАГОЛОВКА КАТЕГОРИИ
-    local function createCategoryHeader(text)
-        local header = Instance.new("TextLabel")
-        header.Size = UDim2.new(0.9, 0, 0, 20)
-        header.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
-        header.BackgroundTransparency = 0.4
-        header.Font = Enum.Font.GothamBold
-        header.TextSize = 12
-        header.TextColor3 = Color3.fromRGB(255, 255, 255)
-        header.Text = text
-        header.TextXAlignment = Enum.TextXAlignment.Center
-        header.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-    end
+    -- КОНТЕЙНЕР ДЛЯ КНОПОК (меняется при переключении таба)
+    contentContainer = Instance.new("Frame")
+    contentContainer.Size = UDim2.new(1, -14, 1, -80)
+    contentContainer.Position = UDim2.new(0, 7, 0, 72)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.Parent = mainFrame
 
-    -- ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ПЕРЕКЛЮЧАТЕЛЯ
-    local function createToggle(label, stateKey, callback)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.9, 0, 0, 26)
-        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-        frame.BackgroundTransparency = 0.4
-        frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.FillDirection = Enum.FillDirection.Vertical
+    contentLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    contentLayout.Padding = UDim.new(0, 6)
+    contentLayout.Parent = contentContainer
 
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.6, 0, 1, 0)
-        lbl.Position = UDim2.new(0.04, 0, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 11
-        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
-        lbl.Text = label
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = frame
+    -- СОЗДАНИЕ ТАБОВ
+    local combatTab = createTabButton("⚔️ Combat", "Combat", tabContainer)
+    local movementTab = createTabButton("🏃 Movement", "Movement", tabContainer)
+    local visualsTab = createTabButton("👁️ Visuals", "Visuals", tabContainer)
 
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 44, 0, 18)
-        btn.Position = UDim2.new(1, -50, 0.5, -9)
-        btn.TextSize = 9
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = frame
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-
-        local function updateButton()
-            if State[stateKey] then
-                btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-                btn.Text = "ON"
-            else
-                btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                btn.Text = "OFF"
-            end
-        end
-        updateButton()
-
-        btn.MouseButton1Click:Connect(function()
-            callback()
-            updateButton()
-        end)
-    end
-
-    -- ====== КАТЕГОРИИ ======
-    createCategoryHeader("⚔️ Combat")
-    createToggle("Silent Aim", "knifeAim", toggleKnifeAim)
-
-    createCategoryHeader("🏃 Movement")
-    createToggle("Noclip", "noclip", toggleNoclip)
-    createToggle("Infinity Jump", "infJump", toggleInfJump)
-
-    createCategoryHeader("👁️ Visuals")
-    createToggle("ESP (Duels)", "esp", toggleESP)
+    -- АКТИВИРУЕМ ПЕРВЫЙ ТАБ
+    combatTab.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+    combatTab.BackgroundTransparency = 0.2
+    currentTab = "Combat"
+    updateContent()
 
     -- КЛАВИША ]
     UserInputService.InputBegan:Connect(function(input)
