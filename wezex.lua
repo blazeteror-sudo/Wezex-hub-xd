@@ -1,4 +1,4 @@
--- WEZEX HUB (TAB MENU)
+-- WEZEX HUB (TAB MENU FIXED)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -270,39 +270,7 @@ local function createSnow(parentFrame)
     end)
 end
 
--- ====== ТАБЫ ======
-local function createTabButton(text, tabName, parent)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.3, 0, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
-    btn.BackgroundTransparency = 0.3
-    btn.Text = text
-    btn.TextSize = 12
-    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = parent
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
-
-    btn.MouseButton1Click:Connect(function()
-        currentTab = tabName
-        updateContent()
-        -- Подсветка активной вкладки
-        for _, child in ipairs(parent:GetChildren()) do
-            if child:IsA("TextButton") then
-                if child == btn then
-                    child.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
-                    child.BackgroundTransparency = 0.2
-                else
-                    child.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
-                    child.BackgroundTransparency = 0.3
-                end
-            end
-        end
-    end)
-
-    return btn
-end
-
+-- ====== КОНТЕЙНЕР СОДЕРЖИМОГО ======
 local function createToggle(label, stateKey, callback, parent)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.9, 0, 0, 26)
@@ -396,8 +364,8 @@ function createMainGUI()
     end)
 
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 220, 0, 220)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -110)
+    mainFrame.Size = UDim2.new(0, 220, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.5, -100)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
@@ -440,13 +408,44 @@ function createMainGUI()
     tabContainer.BackgroundTransparency = 1
     tabContainer.Parent = mainFrame
 
-    local tabLayout = Instance.new("UIListLayout")
-    tabLayout.FillDirection = Enum.FillDirection.Horizontal
-    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    tabLayout.Padding = UDim.new(0, 6)
-    tabLayout.Parent = tabContainer
+    -- ТАБЫ (3 штуки ровно по ширине)
+    local tabs = {"Combat", "Movement", "Visuals"}
+    local tabButtons = {}
+    local tabWidth = 0.28
 
-    -- КОНТЕЙНЕР ДЛЯ КНОПОК (меняется при переключении таба)
+    for i, name in ipairs(tabs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(tabWidth, 0, 1, 0)
+        btn.Position = UDim2.new(0.02 + (i - 1) * (tabWidth + 0.02), 0, 0, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+        btn.BackgroundTransparency = 0.3
+        btn.Text = name
+        btn.TextSize = 11
+        btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = tabContainer
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
+        btn.MouseButton1Click:Connect(function()
+            currentTab = name
+            updateContent()
+            for _, b in ipairs(tabButtons) do
+                b.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+                b.BackgroundTransparency = 0.3
+            end
+            btn.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+            btn.BackgroundTransparency = 0.2
+        end)
+
+        table.insert(tabButtons, btn)
+    end
+
+    -- АКТИВИРУЕМ ПЕРВЫЙ ТАБ
+    tabButtons[1].BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+    tabButtons[1].BackgroundTransparency = 0.2
+    currentTab = "Combat"
+
+    -- КОНТЕЙНЕР ДЛЯ КНОПОК
     contentContainer = Instance.new("Frame")
     contentContainer.Size = UDim2.new(1, -14, 1, -80)
     contentContainer.Position = UDim2.new(0, 7, 0, 72)
@@ -460,15 +459,6 @@ function createMainGUI()
     contentLayout.Padding = UDim.new(0, 6)
     contentLayout.Parent = contentContainer
 
-    -- СОЗДАНИЕ ТАБОВ
-    local combatTab = createTabButton("⚔️ Combat", "Combat", tabContainer)
-    local movementTab = createTabButton("🏃 Movement", "Movement", tabContainer)
-    local visualsTab = createTabButton("👁️ Visuals", "Visuals", tabContainer)
-
-    -- АКТИВИРУЕМ ПЕРВЫЙ ТАБ
-    combatTab.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
-    combatTab.BackgroundTransparency = 0.2
-    currentTab = "Combat"
     updateContent()
 
     -- КЛАВИША ]
