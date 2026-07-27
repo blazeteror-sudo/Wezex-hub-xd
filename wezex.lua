@@ -1,4 +1,4 @@
--- Wezex Hub v4.1 + SPLASH SCREEN
+-- Wezex Hub v4.1 + SPLASH (SAFE)
 -- KEY: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -7,7 +7,6 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local KnifeController
 
 -- Очистка
@@ -556,7 +555,7 @@ function createMainGUI()
     if State.infJump then toggleInfJump() end
 end
 
--- ========== SPLASH SCREEN ==========
+-- ========== SPLASH SCREEN (БЕЗ TWEEN) ==========
 local function showSplashScreen()
     local splashGui = Instance.new("ScreenGui")
     splashGui.Name = "SplashScreen"
@@ -572,13 +571,13 @@ local function showSplashScreen()
     overlay.BorderSizePixel = 0
     overlay.Parent = splashGui
 
-    -- Основной текст (большой, яркий)
+    -- Главный текст
     local mainText = Instance.new("TextLabel")
-    mainText.Size = UDim2.new(1, 0, 0, 60)
-    mainText.Position = UDim2.new(0, 0, 0.35, 0)
+    mainText.Size = UDim2.new(1, 0, 0, 70)
+    mainText.Position = UDim2.new(0, 0, 0.3, 0)
     mainText.BackgroundTransparency = 1
     mainText.Font = Enum.Font.GothamBlack
-    mainText.TextSize = 48
+    mainText.TextSize = 50
     mainText.TextColor3 = Color3.fromRGB(200, 150, 255)
     mainText.Text = "ДОБРО ПОЖАЛОВАТЬ"
     mainText.TextXAlignment = Enum.TextXAlignment.Center
@@ -588,7 +587,8 @@ local function showSplashScreen()
     -- Подзаголовок
     local subText = Instance.new("TextLabel")
     subText.Size = UDim2.new(1, 0, 0, 40)
-    subText.Position = UDim2.new(0, 0, 0.5, 0)
+    subText.Position = UDim2.new(0, 0, 0.45, 0)
     subText.BackgroundTransparency = 1
     subText.Font = Enum.Font.GothamBold
-  
+    subText.TextSize = 28
+    subText.TextColor3 = Color3.fro
