@@ -1,4 +1,4 @@
--- WEZEX HUB | STEEL BRAINROT (CLEAN)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (ONLY INFJUMP)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -157,7 +157,20 @@ function createMainUI()
         },
     })
 
-    -- ВКЛАДКА MOVEMENT
+    -- ВКЛАДКА COMBAT (ПУСТАЯ)
+    local CombatTab = Window:Tab({
+        Title = "Combat",
+        Icon = "solar:sword-bold",
+    })
+    local CombatSection = CombatTab:Section({
+        Title = "⚔️ Combat Settings",
+    })
+    CombatSection:Label({
+        Title = "Нет доступных функций",
+        Desc = "Ожидайте обновления",
+    })
+
+    -- ВКЛАДКА MOVEMENT (ТОЛЬКО INFINITE JUMP)
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
@@ -174,6 +187,19 @@ function createMainUI()
                 toggleInfJump()
             end
         end,
+    })
+
+    -- ВКЛАДКА VISUALS (ПУСТАЯ)
+    local VisualsTab = Window:Tab({
+        Title = "Visuals",
+        Icon = "solar:eye-bold",
+    })
+    local VisualsSection = VisualsTab:Section({
+        Title = "👁️ Visual Settings",
+    })
+    VisualsSection:Label({
+        Title = "Нет доступных функций",
+        Desc = "Ожидайте обновления",
     })
 
     -- ВКЛАДКА ABOUT
