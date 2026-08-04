@@ -1,32 +1,16 @@
--- WEZEX HUB (WINDUI) | STEEL BRAINROT (ULTIMATE + PLATFORM)
+-- WEZEX HUB (AUTONOMOUS) | STEEL BRAINROT
 -- КЛЮЧ: 38399923
+-- НЕ ТРЕБУЕТ ВНЕШНИХ ССЫЛОК
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
 local Lighting = game:GetService("Lighting")
-
--- ====== ЗАГРУЗКА WINDUI ======
-local WindUI
-do
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-    end)
-    if ok then
-        WindUI = result
-    else
-        error("WindUI не загрузился")
-    end
-end
-
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
-local CORRECT_KEY = "38399923"
-local keyVerified = false
+local TweenService = game:GetService("TweenService")
 
 -- ====== СОСТОЯНИЯ ======
 local State = {
@@ -58,65 +42,42 @@ local orbs = {}
 local orbLights = {}
 local fireflies = {}
 
+-- ====== КЛЮЧ ======
+local CORRECT_KEY = "38399923"
+
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT (FIXED)
+-- 1. LASER AIMBOT
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
     State.laser = true
-
     laserConn = RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
-
-        -- Проверяем, что лазер в руках
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool or not tool.Name:lower():find("laser") then return end
-
         local handle = tool:FindFirstChild("Handle")
         if not handle then return end
-
-        -- Находим ближайшего врага (не себя, не союзников)
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p == LocalPlayer then continue end
-            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local h2 = p.Character:FindFirstChild("Humanoid")
                 if h2 and h2.Health > 0 then
                     local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < bestDist then
-                        bestDist = d
-                        best = p
-                    end
+                    if d < bestDist then bestDist = d; best = p end
                 end
             end
         end
-
         if best and best.Character then
             local target = best.Character:FindFirstChild("HumanoidRootPart")
             if target then
-                -- Направляем лазер в цель
                 local dir = (target.Position - handle.Position).Unit
                 handle.CFrame = CFrame.lookAt(handle.Position, handle.Position + dir * 100)
-
-                -- Стреляем (безопасно)
                 local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
-                if remote then
-                    pcall(function()
-                        remote:FireServer(target.Position, target)
-                    end)
-                end
-
-                -- Альтернатива: клик
+                if remote then pcall(function() remote:FireServer(target.Position, target) end) end
                 local mouse = LocalPlayer:GetMouse()
-                if mouse then
-                    pcall(function()
-                        mouse.Button1Down:Fire()
-                        task.wait(0.05)
-                        mouse.Button1Up:Fire()
-                    end)
-                end
+                if mouse then pcall(function() mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire() end) end
             end
         end
     end)
@@ -177,7 +138,7 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ESP (ОБХОД НЕВИДИМОСТИ)
+-- 4. ESP
 local function startESP()
     espOn = true
     State.esp = true
@@ -217,7 +178,7 @@ local function stopESP()
     espHLs = {}
 end
 
--- 5. НОЧЬ (ВСЕГДА)
+-- 5. НОЧЬ
 local function toggleNight()
     nightOn = not nightOn
     State.night = nightOn
@@ -236,7 +197,7 @@ local function toggleNight()
     end
 end
 
--- 6. ORBS (С ШЛЕЙФОМ)
+-- 6. ORBS
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -310,7 +271,7 @@ local function stopOrbs()
     orbLights = {}
 end
 
--- 7. СВЕТЛЯЧКИ (ПО ВСЕЙ КАРТЕ)
+-- 7. СВЕТЛЯЧКИ
 local function startFireflies()
     firefliesOn = true
     State.fireflies = true
@@ -471,12 +432,11 @@ local function stopSkybox()
     Lighting.CelestialBodiesShown = false
 end
 
--- 10. ПЛАТФОРМА (АНТИ-СМЕРТЬ)
+-- 10. ПЛАТФОРМА
 local function startPlatform()
     platformOn = true
     State.platform = true
 
-    -- Создаём невидимую платформу под игроком
     platformPart = Instance.new("Part")
     platformPart.Size = Vector3.new(10, 1, 10)
     platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
@@ -487,35 +447,25 @@ local function startPlatform()
     platformPart.Color = Color3.fromRGB(0, 255, 255)
     platformPart.Parent = Workspace
 
-    -- Добавляем свет
     local light = Instance.new("PointLight")
     light.Parent = platformPart
     light.Color = Color3.fromRGB(0, 255, 255)
     light.Range = 15
     light.Brightness = 2
 
-    -- Поднимаем платформу вместе с игроком
     platformConnection = RunService.RenderStepped:Connect(function()
         if not platformOn then return end
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-
-        -- Платформа следует за игроком
         platformPart.Position = hrp.Position - Vector3.new(0, 3, 0)
-
-        -- Проверяем, стоит ли игрок на платформе
         local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            if humanoid.FloorMaterial ~= Enum.Material.Air then
-                -- Если игрок на земле, платформа поднимается выше
-                platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
-            end
+        if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
+            platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
         end
     end)
 
-    -- Автоматическое исчезновение через 5 секунд после отключения
     task.spawn(function()
         while platformOn do
             task.wait(0.5)
@@ -545,68 +495,104 @@ local function stopPlatform()
     end
 end
 
--- ====== ОКНО КЛЮЧА ======
-local function showNativeKeyWindow()
+-- ====== МЕНЮ (НАТИВНОЕ, БЕЗ ВНЕШНИХ ЗАВИСИМОСТЕЙ) ======
+local screenGui, mainFrame, openBtn = nil, nil, nil
+
+local function createMenu()
     pcall(function()
-        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
     end)
 
-    local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.Parent = CoreGui
-    keyGui.ResetOnSpawn = false
-    keyGui.IgnoreGuiInset = true
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "WezexHub"
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Enabled = true
 
-    local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
-    panel.Parent = keyGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+    -- Кнопка W
+    openBtn = Instance.new("TextButton")
+    openBtn.Size = UDim2.new(0, 50, 0, 50)
+    openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
+    openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
+    openBtn.BackgroundTransparency = 0.15
+    openBtn.Text = "W"
+    openBtn.TextSize = 24
+    openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
+    openBtn.Font = Enum.Font.GothamBold
+    openBtn.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
+    openBtn.Visible = false
+    openBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        openBtn.Visible = false
+    end)
+
+    -- Главное меню
+    mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 250, 0, 420)
+    mainFrame.Position = UDim2.new(0.5, -125, 0.5, -210)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
+    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
+    mainFrame.ClipsDescendants = true
+    mainFrame.Visible = true
 
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 6)
+    title.Position = UDim2.new(0, 0, 0, 4)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
-    title.TextSize = 20
+    title.TextSize = 18
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = panel
+    title.Parent = mainFrame
 
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 18)
-    info.Position = UDim2.new(0, 0, 0, 42)
-    info.BackgroundTransparency = 1
-    info.Font = Enum.Font.Gotham
-    info.TextSize = 12
-    info.TextColor3 = Color3.fromRGB(160, 160, 200)
-    info.Text = "Введите ключ доступа"
-    info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = panel
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -30, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
+    closeBtn.Text = "✕"
+    closeBtn.TextSize = 14
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Parent = mainFrame
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        openBtn.Visible = true
+    end)
 
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
-    keyBox.Font = Enum.Font.GothamBold
-    keyBox.TextSize = 16
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.Text = ""
-    keyBox.PlaceholderText = "Ключ"
-    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+    -- Контейнер с прокруткой
+    local content = Instance.new("ScrollingFrame")
+    content.Size = UDim2.new(1, -14, 1, -48)
+    content.Position = UDim2.new(0, 7, 0, 40)
+    content.BackgroundTransparency = 1
+    content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    content.ScrollBarThickness = 4
+    content.Parent = mainFrame
 
-    local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
-    enterBtn.Text = "Войти"
-    enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = content
+
+    -- Функция создания переключателя
+    local function makeToggle(label, stateKey, onFunc, offFunc)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(0.95, 0, 0, 30)
+        f.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+        f.BackgroundTransparency = 0.4
+        f.Parent = content
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(0.55, 0, 1, 0)
+        l.Position = UDim2.new(0.04, 0, 0, 0)
+        l.BackgroundTransparency = 1
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = 11
+        l.TextColor3 = Color3.fromRGB(
