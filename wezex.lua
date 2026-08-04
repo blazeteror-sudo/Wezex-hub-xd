@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WITH EFFECTS)
+-- WEZEX HUB (WINDUI) | STEEL BRAINROT (ULTIMATE + PLATFORM)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -36,55 +36,87 @@ local State = {
     esp = false,
     night = false,
     orbs = false,
-    trail = false,
+    fireflies = false,
+    shaders = false,
+    skybox = false,
+    platform = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
 local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
-local nightConnection = nil
 local orbConnections = {}
-local trailConnection = nil
-local blurEffect = nil
-local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, trailOn = false, false, false, false, false, false, false
+local fireflyConnections = {}
+local skyConnection = nil
+local platformConnection = nil
+local platformPart = nil
+
+local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, firefliesOn, shadersOn, skyboxOn, platformOn = false, false, false, false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
 local orbLights = {}
+local fireflies = {}
 
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT
+-- 1. LASER AIMBOT (FIXED)
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
     State.laser = true
+
     laserConn = RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
+
+        -- Проверяем, что лазер в руках
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool or not tool.Name:lower():find("laser") then return end
+
         local handle = tool:FindFirstChild("Handle")
         if not handle then return end
+
+        -- Находим ближайшего врага (не себя, не союзников)
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p == LocalPlayer then continue end
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local h2 = p.Character:FindFirstChild("Humanoid")
                 if h2 and h2.Health > 0 then
                     local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < bestDist then bestDist = d; best = p end
+                    if d < bestDist then
+                        bestDist = d
+                        best = p
+                    end
                 end
             end
         end
+
         if best and best.Character then
             local target = best.Character:FindFirstChild("HumanoidRootPart")
             if target then
+                -- Направляем лазер в цель
                 local dir = (target.Position - handle.Position).Unit
                 handle.CFrame = CFrame.lookAt(handle.Position, handle.Position + dir * 100)
+
+                -- Стреляем (безопасно)
                 local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
-                if remote then pcall(function() remote:FireServer(target.Position, target) end) end
+                if remote then
+                    pcall(function()
+                        remote:FireServer(target.Position, target)
+                    end)
+                end
+
+                -- Альтернатива: клик
                 local mouse = LocalPlayer:GetMouse()
-                if mouse then pcall(function() mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire() end) end
+                if mouse then
+                    pcall(function()
+                        mouse.Button1Down:Fire()
+                        task.wait(0.05)
+                        mouse.Button1Up:Fire()
+                    end)
+                end
             end
         end
     end)
@@ -185,7 +217,7 @@ local function stopESP()
     espHLs = {}
 end
 
--- 5. НОЧЬ
+-- 5. НОЧЬ (ВСЕГДА)
 local function toggleNight()
     nightOn = not nightOn
     State.night = nightOn
@@ -193,14 +225,18 @@ local function toggleNight()
         Lighting.Ambient = Color3.fromRGB(10, 10, 20)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
+        Lighting.TimeOfDay = "00:00:00"
+        Lighting.ClockTime = 0
     else
         Lighting.Ambient = Color3.fromRGB(127, 127, 127)
         Lighting.Brightness = 1
         Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.TimeOfDay = "12:00:00"
+        Lighting.ClockTime = 12
     end
 end
 
--- 6. ORBS + РАЗМЫТИЕ (MOTION BLUR)
+-- 6. ORBS (С ШЛЕЙФОМ)
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -211,7 +247,21 @@ local function createOrb(parent, color, offset)
     orb.CanCollide = false
     orb.Parent = parent
 
-    -- Добавляем свет
+    local trail = Instance.new("Trail")
+    trail.Parent = orb
+    trail.Attachment0 = Instance.new("Attachment", orb)
+    trail.Lifetime = 0.3
+    trail.MinLength = 0.2
+    trail.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, color),
+        ColorSequenceKeypoint.new(1, color)
+    })
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    trail.Width = NumberSequence.new(1)
+
     local light = Instance.new("PointLight")
     light.Parent = orb
     light.Color = color
@@ -226,14 +276,6 @@ local function startOrbs()
     orbsOn = true
     State.orbs = true
 
-    -- Создаём эффект размытия (Motion Blur) на камере
-    if not blurEffect then
-        blurEffect = Instance.new("BlurEffect")
-        blurEffect.Parent = Camera
-        blurEffect.Size = 5
-    end
-    blurEffect.Enabled = true
-
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
@@ -243,7 +285,6 @@ local function startOrbs()
     for i = 1, 3 do
         local orb = createOrb(hrp, colors[i], offsets[i])
         table.insert(orbs, orb)
-        local startPos = offsets[i]
         local conn = RunService.RenderStepped:Connect(function()
             if not orbsOn or not hrp.Parent then return end
             local time = tick() * 1.5
@@ -256,26 +297,11 @@ local function startOrbs()
         end)
         table.insert(orbConnections, conn)
     end
-
-    -- Автоматически отключаем размытие, если орбы выключены
-    task.spawn(function()
-        while orbsOn do
-            task.wait(0.5)
-        end
-        if blurEffect then
-            blurEffect.Enabled = false
-        end
-    end)
 end
 
 local function stopOrbs()
     orbsOn = false
     State.orbs = false
-
-    if blurEffect then
-        blurEffect.Enabled = false
-    end
-
     for _, conn in ipairs(orbConnections) do conn:Disconnect() end
     orbConnections = {}
     for _, orb in ipairs(orbs) do orb:Destroy() end
@@ -284,78 +310,238 @@ local function stopOrbs()
     orbLights = {}
 end
 
--- 7. ТРЕЙЛЫ + ОСВЕЩЕНИЕ (ИСПРАВЛЕНО)
-local function startTrail()
-    trailOn = true
-    State.trail = true
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
+-- 7. СВЕТЛЯЧКИ (ПО ВСЕЙ КАРТЕ)
+local function startFireflies()
+    firefliesOn = true
+    State.fireflies = true
 
-    -- Удаляем старый трейл, если есть
-    local oldTrail = hrp:FindFirstChild("WezexTrail")
-    if oldTrail then oldTrail:Destroy() end
+    for i = 1, 50 do
+        local particle = Instance.new("Part")
+        particle.Size = Vector3.new(0.3, 0.3, 0.3)
+        particle.Shape = Enum.PartType.Ball
+        particle.Material = Enum.Material.Neon
+        particle.Color = Color3.fromRGB(math.random(200, 255), math.random(200, 255), math.random(200, 255))
+        particle.Anchored = true
+        particle.CanCollide = false
+        particle.Parent = Workspace
 
-    local trail = Instance.new("Trail")
-    trail.Name = "WezexTrail"
-    trail.Parent = hrp
+        local light = Instance.new("PointLight")
+        light.Parent = particle
+        light.Color = particle.Color
+        light.Range = 3
+        light.Brightness = 0.5
 
-    -- Прикрепляем Attachment к HumanoidRootPart
-    local att = Instance.new("Attachment")
-    att.Parent = hrp
-    att.Position = Vector3.new(0, 0, 0)
-    trail.Attachment0 = att
+        local startPos = Vector3.new(
+            math.random(-50, 50),
+            math.random(0, 20),
+            math.random(-50, 50)
+        )
+        local speed = 0.5 + math.random() * 1.5
+        local phase = math.random() * 100
 
-    -- Настройки трейла
-    trail.Lifetime = 0.8
-    trail.MinLength = 0.5
-    trail.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 0))
-    })
-    trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.2),
-        NumberSequenceKeypoint.new(1, 1)
-    })
-    trail.Width = NumberSequence.new(0.8)
+        table.insert(fireflies, {
+            part = particle,
+            startPos = startPos,
+            speed = speed,
+            phase = phase,
+            light = light
+        })
+    end
 
-    -- Свет от трейла
-    local light = Instance.new("PointLight")
-    light.Parent = hrp
-    light.Color = Color3.fromRGB(255, 100, 255)
-    light.Range = 20
-    light.Brightness = 2
-
-    -- Анимация цвета света
-    trailConnection = RunService.RenderStepped:Connect(function()
-        if not trailOn or not char.Parent then
-            if light then light.Enabled = false end
-            return
+    local conn = RunService.RenderStepped:Connect(function()
+        if not firefliesOn then return end
+        local time = tick()
+        for _, data in ipairs(fireflies) do
+            local pos = data.startPos + Vector3.new(
+                math.sin(time * data.speed + data.phase) * 5,
+                math.sin(time * data.speed * 0.7 + data.phase * 2) * 3 + 2,
+                math.cos(time * data.speed * 0.8 + data.phase * 1.5) * 5
+            )
+            data.part.Position = pos
+            data.light.Brightness = 0.3 + math.sin(time * data.speed + data.phase) * 0.2
         end
-        if light then light.Enabled = true end
-        local time = tick() * 0.3
-        local r = math.sin(time) * 0.5 + 0.5
-        local g = math.sin(time + 2.09) * 0.5 + 0.5
-        local b = math.sin(time + 4.18) * 0.5 + 0.5
-        light.Color = Color3.new(r, g, b)
+    end)
+    table.insert(fireflyConnections, conn)
+end
+
+local function stopFireflies()
+    firefliesOn = false
+    State.fireflies = false
+    for _, conn in ipairs(fireflyConnections) do conn:Disconnect() end
+    fireflyConnections = {}
+    for _, data in ipairs(fireflies) do
+        if data.part then data.part:Destroy() end
+        if data.light then data.light:Destroy() end
+    end
+    fireflies = {}
+end
+
+-- 8. ШЕЙДЕРЫ
+local function startShaders()
+    shadersOn = true
+    State.shaders = true
+
+    Lighting.Ambient = Color3.fromRGB(80, 80, 100)
+    Lighting.Brightness = 0.8
+    Lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 100)
+    Lighting.ShadowSoftness = 1
+    Lighting.ClockTime = 14
+
+    if not Lighting:FindFirstChild("SunRays") then
+        local sunRays = Instance.new("SunRaysEffect")
+        sunRays.Name = "SunRays"
+        sunRays.Parent = Lighting
+        sunRays.Intensity = 0.5
+        sunRays.Spread = 0.5
+    end
+
+    if not Lighting:FindFirstChild("ColorCorrection") then
+        local colorCorrection = Instance.new("ColorCorrectionEffect")
+        colorCorrection.Name = "ColorCorrection"
+        colorCorrection.Parent = Lighting
+        colorCorrection.Brightness = 0.1
+        colorCorrection.Contrast = 0.1
+        colorCorrection.Saturation = 0.2
+    end
+
+    Lighting.FogEnd = 100
+    Lighting.FogStart = 20
+    Lighting.FogColor = Color3.fromRGB(150, 180, 220)
+end
+
+local function stopShaders()
+    shadersOn = false
+    State.shaders = false
+
+    Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+    Lighting.Brightness = 1
+    Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+    Lighting.ShadowSoftness = 0
+    Lighting.FogEnd = 1000
+    Lighting.FogStart = 0
+    Lighting.FogColor = Color3.fromRGB(127, 127, 127)
+
+    local sunRays = Lighting:FindFirstChild("SunRays")
+    if sunRays then sunRays:Destroy() end
+    local colorCorrection = Lighting:FindFirstChild("ColorCorrection")
+    if colorCorrection then colorCorrection:Destroy() end
+end
+
+-- 9. SKYBOX
+local function startSkybox()
+    skyboxOn = true
+    State.skybox = true
+
+    local sky = Instance.new("Sky")
+    sky.Name = "WezexSky"
+    sky.Parent = Lighting
+
+    sky.SkyboxBk = Color3.fromRGB(40, 30, 60)
+    sky.SkyboxDn = Color3.fromRGB(200, 100, 50)
+    sky.SkyboxFt = Color3.fromRGB(100, 80, 150)
+    sky.SkyboxLf = Color3.fromRGB(150, 100, 200)
+    sky.SkyboxRt = Color3.fromRGB(150, 100, 200)
+    sky.SkyboxUp = Color3.fromRGB(80, 40, 120)
+
+    sky.StarCount = 5000
+    sky.CelestialBodiesShown = true
+    sky.SunAngularSize = 30
+    sky.MoonAngularSize = 20
+    sky.Clouds = Enum.Clouds.Smooth
+
+    skyConnection = RunService.RenderStepped:Connect(function()
+        if not skyboxOn then return end
+        local time = tick() * 0.05
+        local r = math.sin(time) * 0.1 + 0.9
+        local g = math.sin(time + 1) * 0.1 + 0.9
+        local b = math.sin(time + 2) * 0.1 + 0.9
+        sky.SkyboxUp = Color3.new(0.3 * r, 0.2 * g, 0.5 * b)
     end)
 end
 
-local function stopTrail()
-    trailOn = false
-    State.trail = false
-    if trailConnection then trailConnection:Disconnect(); trailConnection = nil end
-    local char = LocalPlayer.Character
-    if char then
+local function stopSkybox()
+    skyboxOn = false
+    State.skybox = false
+
+    if skyConnection then skyConnection:Disconnect(); skyConnection = nil end
+    local sky = Lighting:FindFirstChild("WezexSky")
+    if sky then sky:Destroy() end
+
+    Lighting.StarCount = 0
+    Lighting.CelestialBodiesShown = false
+end
+
+-- 10. ПЛАТФОРМА (АНТИ-СМЕРТЬ)
+local function startPlatform()
+    platformOn = true
+    State.platform = true
+
+    -- Создаём невидимую платформу под игроком
+    platformPart = Instance.new("Part")
+    platformPart.Size = Vector3.new(10, 1, 10)
+    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
+    platformPart.Anchored = true
+    platformPart.CanCollide = true
+    platformPart.Transparency = 0.5
+    platformPart.Material = Enum.Material.Neon
+    platformPart.Color = Color3.fromRGB(0, 255, 255)
+    platformPart.Parent = Workspace
+
+    -- Добавляем свет
+    local light = Instance.new("PointLight")
+    light.Parent = platformPart
+    light.Color = Color3.fromRGB(0, 255, 255)
+    light.Range = 15
+    light.Brightness = 2
+
+    -- Поднимаем платформу вместе с игроком
+    platformConnection = RunService.RenderStepped:Connect(function()
+        if not platformOn then return end
+        local char = LocalPlayer.Character
+        if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local trail = hrp:FindFirstChild("WezexTrail")
-            if trail then trail:Destroy() end
-            local light = hrp:FindFirstChild("PointLight")
-            if light then light:Destroy() end
-            local att = hrp:FindFirstChild("Attachment")
-            if att and att.Name == "" then att:Destroy() end
+        if not hrp then return end
+
+        -- Платформа следует за игроком
+        platformPart.Position = hrp.Position - Vector3.new(0, 3, 0)
+
+        -- Проверяем, стоит ли игрок на платформе
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            if humanoid.FloorMaterial ~= Enum.Material.Air then
+                -- Если игрок на земле, платформа поднимается выше
+                platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
+            end
         end
+    end)
+
+    -- Автоматическое исчезновение через 5 секунд после отключения
+    task.spawn(function()
+        while platformOn do
+            task.wait(0.5)
+        end
+        if platformPart then
+            platformPart:Destroy()
+            platformPart = nil
+        end
+        if platformConnection then
+            platformConnection:Disconnect()
+            platformConnection = nil
+        end
+    end)
+end
+
+local function stopPlatform()
+    platformOn = false
+    State.platform = false
+
+    if platformPart then
+        platformPart:Destroy()
+        platformPart = nil
+    end
+    if platformConnection then
+        platformConnection:Disconnect()
+        platformConnection = nil
     end
 end
 
@@ -423,171 +609,4 @@ local function showNativeKeyWindow()
     enterBtn.BackgroundTransparency = 0.2
     enterBtn.Text = "Войти"
     enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyVerified = true
-            keyGui:Destroy()
-            createMainUI()
-        else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-        end
-    end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
-end
-
--- ====== GUI ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
-        Folder = "WezexHub",
-        Icon = "solar:folder-2-bold-duotone",
-        OpenButton = {
-            Title = "Wezex Hub",
-            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-            Draggable = true,
-            Scale = 0.5,
-        },
-    })
-
-    -- ВКЛАДКА COMBAT
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Combat Settings",
-    })
-    CombatSection:Toggle({
-        Title = "Laser Aimbot",
-        Desc = "Автострельба лазером по игрокам",
-        Value = State.laser,
-        Callback = function(v)
-            if v ~= State.laser then
-                if v then startLaser() else stopLaser() end
-            end
-        end,
-    })
-    CombatSection:Toggle({
-        Title = "Touch Fling",
-        Desc = "Вылетает из карты",
-        Value = State.fling,
-        Callback = function(v)
-            if v ~= State.fling then
-                toggleFling()
-            end
-        end,
-    })
-
-    -- ВКЛАДКА MOVEMENT
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
-    MovementSection:Toggle({
-        Title = "Infinite Jump",
-        Desc = "Бесконечные прыжки",
-        Value = State.infJump,
-        Callback = function(v)
-            if v ~= State.infJump then
-                if v then startInfJump() else stopInfJump() end
-            end
-        end,
-    })
-
-    -- ВКЛАДКА VISUALS
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
-    })
-    VisualsSection:Toggle({
-        Title = "ESP",
-        Desc = "Подсветка игроков (сквозь стены)",
-        Value = State.esp,
-        Callback = function(v)
-            if v ~= State.esp then
-                if v then startESP() else stopESP() end
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Night Mode",
-        Desc = "Делает ночь в игре",
-        Value = State.night,
-        Callback = function(v)
-            if v ~= State.night then
-                toggleNight()
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Orbs (Motion Blur)",
-        Desc = "Парящие шарики с эффектом размытия",
-        Value = State.orbs,
-        Callback = function(v)
-            if v ~= State.orbs then
-                if v then startOrbs() else stopOrbs() end
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Trail",
-        Desc = "Красивый светящийся след за игроком",
-        Value = State.trail,
-        Callback = function(v)
-            if v ~= State.trail then
-                if v then startTrail() else stopTrail() end
-            end
-        end,
-    })
-
-    -- ВКЛАДКА ABOUT
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
-    })
-    AboutSection:Button({
-        Title = "Destroy Window",
-        Color = Color3.fromRGB(255, 50, 50),
-        Callback = function()
-            Window:Destroy()
-        end,
-    })
-
-    -- Синхронизация
-    if State.laser then startLaser() end
-    if State.fling then toggleFling() end
-    if State.infJump then startInfJump() end
-    if State.esp then startESP() end
-    if State.night then toggleNight() end
-    if State.orbs then startOrbs() end
-    if State.trail then startTrail() end
-end
-
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+    enterBtn.TextColor3 = Color3.fromRGB(
