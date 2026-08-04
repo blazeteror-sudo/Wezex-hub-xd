@@ -1,4 +1,4 @@
--- WEZEX HUB (СТАБИЛЬНАЯ ВЕРСИЯ)
+-- WEZEX HUB (FINAL: ORBS ONLY)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,34 +8,23 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
-local Lighting = game:GetService("Lighting")
 
 -- ====== СОСТОЯНИЯ ======
 local State = {
     laser = false,
     fling = false,
     infJump = false,
-    esp = false,
-    night = false,
     orbs = false,
-    fireflies = false,
-    platform = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
 local laserConn, flingConn, infJumpConn = nil, nil, nil
-local espHLs = {}
 local orbConnections = {}
-local fireflyConnections = {}
-local platformConnection = nil
-local platformPart = nil
-
-local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, firefliesOn, platformOn = false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, orbsOn = false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
 local orbLights = {}
-local fireflies = {}
 
 -- ====== КЛЮЧ ======
 local CORRECT_KEY = "38399923"
@@ -133,66 +122,7 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ESP
-local function startESP()
-    espOn = true
-    State.esp = true
-    local function updateESP()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p == LocalPlayer then continue end
-            local char = p.Character
-            if not char then continue end
-            local hl = char:FindFirstChild("WezexESP")
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "WezexESP"
-                hl.Adornee = char
-                hl.FillColor = Color3.fromRGB(255, 50, 50)
-                hl.FillTransparency = 0.2
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.OutlineTransparency = 0.1
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Parent = char
-                table.insert(espHLs, hl)
-            end
-        end
-    end
-    updateESP()
-    local conn1 = Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end)
-    table.insert(espHLs, conn1)
-    local conn2 = Workspace.ChildAdded:Connect(function(child) if child:IsA("Model") and child:FindFirstChild("Humanoid") then task.wait(0.3); updateESP() end end)
-    table.insert(espHLs, conn2)
-    local conn3 = RunService.Heartbeat:Connect(updateESP)
-    table.insert(espHLs, conn3)
-end
-
-local function stopESP()
-    espOn = false
-    State.esp = false
-    for _, obj in ipairs(espHLs) do if obj and obj.Parent then obj:Destroy() end end
-    espHLs = {}
-end
-
--- 5. НОЧЬ
-local function toggleNight()
-    nightOn = not nightOn
-    State.night = nightOn
-    if nightOn then
-        Lighting.Ambient = Color3.fromRGB(10, 10, 20)
-        Lighting.Brightness = 0.2
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
-        Lighting.TimeOfDay = "00:00:00"
-        Lighting.ClockTime = 0
-    else
-        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
-        Lighting.TimeOfDay = "12:00:00"
-        Lighting.ClockTime = 12
-    end
-end
-
--- 6. ORBS
+-- 4. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ)
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -203,26 +133,28 @@ local function createOrb(parent, color, offset)
     orb.CanCollide = false
     orb.Parent = parent
 
+    -- Шлейф (Trail) для шарика
     local trail = Instance.new("Trail")
     trail.Parent = orb
     trail.Attachment0 = Instance.new("Attachment", orb)
-    trail.Lifetime = 0.3
+    trail.Lifetime = 0.4
     trail.MinLength = 0.2
     trail.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, color),
         ColorSequenceKeypoint.new(1, color)
     })
     trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0, 0.1),
         NumberSequenceKeypoint.new(1, 1)
     })
-    trail.Width = NumberSequence.new(1)
+    trail.Width = NumberSequence.new(1.2)
 
+    -- Свет от шара
     local light = Instance.new("PointLight")
     light.Parent = orb
     light.Color = color
-    light.Range = 15
-    light.Brightness = 2
+    light.Range = 18
+    light.Brightness = 2.5
     table.insert(orbLights, light)
 
     return orb
@@ -245,9 +177,9 @@ local function startOrbs()
             if not orbsOn or not hrp.Parent then return end
             local time = tick() * 1.5
             local offset = Vector3.new(
-                math.sin(time + i * 2.09) * 4,
-                math.cos(time + i * 1.57) * 3 + 2,
-                math.cos(time + i * 1.05) * 4
+                math.sin(time + i * 2.09) * 4.5,
+                math.cos(time + i * 1.57) * 3.5 + 2.5,
+                math.cos(time + i * 1.05) * 4.5
             )
             orb.Position = hrp.Position + offset
         end)
@@ -264,135 +196,6 @@ local function stopOrbs()
     orbs = {}
     for _, light in ipairs(orbLights) do light:Destroy() end
     orbLights = {}
-end
-
--- 7. СВЕТЛЯЧКИ
-local function startFireflies()
-    firefliesOn = true
-    State.fireflies = true
-
-    for i = 1, 50 do
-        local particle = Instance.new("Part")
-        particle.Size = Vector3.new(0.3, 0.3, 0.3)
-        particle.Shape = Enum.PartType.Ball
-        particle.Material = Enum.Material.Neon
-        particle.Color = Color3.fromRGB(math.random(200, 255), math.random(200, 255), math.random(200, 255))
-        particle.Anchored = true
-        particle.CanCollide = false
-        particle.Parent = Workspace
-
-        local light = Instance.new("PointLight")
-        light.Parent = particle
-        light.Color = particle.Color
-        light.Range = 3
-        light.Brightness = 0.5
-
-        local startPos = Vector3.new(
-            math.random(-50, 50),
-            math.random(0, 20),
-            math.random(-50, 50)
-        )
-        local speed = 0.5 + math.random() * 1.5
-        local phase = math.random() * 100
-
-        table.insert(fireflies, {
-            part = particle,
-            startPos = startPos,
-            speed = speed,
-            phase = phase,
-            light = light
-        })
-    end
-
-    local conn = RunService.RenderStepped:Connect(function()
-        if not firefliesOn then return end
-        local time = tick()
-        for _, data in ipairs(fireflies) do
-            local pos = data.startPos + Vector3.new(
-                math.sin(time * data.speed + data.phase) * 5,
-                math.sin(time * data.speed * 0.7 + data.phase * 2) * 3 + 2,
-                math.cos(time * data.speed * 0.8 + data.phase * 1.5) * 5
-            )
-            data.part.Position = pos
-            data.light.Brightness = 0.3 + math.sin(time * data.speed + data.phase) * 0.2
-        end
-    end)
-    table.insert(fireflyConnections, conn)
-end
-
-local function stopFireflies()
-    firefliesOn = false
-    State.fireflies = false
-    for _, conn in ipairs(fireflyConnections) do conn:Disconnect() end
-    fireflyConnections = {}
-    for _, data in ipairs(fireflies) do
-        if data.part then data.part:Destroy() end
-        if data.light then data.light:Destroy() end
-    end
-    fireflies = {}
-end
-
--- 8. ПЛАТФОРМА
-local function startPlatform()
-    platformOn = true
-    State.platform = true
-
-    platformPart = Instance.new("Part")
-    platformPart.Size = Vector3.new(10, 1, 10)
-    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
-    platformPart.Anchored = true
-    platformPart.CanCollide = true
-    platformPart.Transparency = 0.5
-    platformPart.Material = Enum.Material.Neon
-    platformPart.Color = Color3.fromRGB(0, 255, 255)
-    platformPart.Parent = Workspace
-
-    local light = Instance.new("PointLight")
-    light.Parent = platformPart
-    light.Color = Color3.fromRGB(0, 255, 255)
-    light.Range = 15
-    light.Brightness = 2
-
-    platformConnection = RunService.RenderStepped:Connect(function()
-        if not platformOn then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        platformPart.Position = hrp.Position - Vector3.new(0, 3, 0)
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
-            platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
-        end
-    end)
-
-    task.spawn(function()
-        while platformOn do
-            task.wait(0.5)
-        end
-        if platformPart then
-            platformPart:Destroy()
-            platformPart = nil
-        end
-        if platformConnection then
-            platformConnection:Disconnect()
-            platformConnection = nil
-        end
-    end)
-end
-
-local function stopPlatform()
-    platformOn = false
-    State.platform = false
-
-    if platformPart then
-        platformPart:Destroy()
-        platformPart = nil
-    end
-    if platformConnection then
-        platformConnection:Disconnect()
-        platformConnection = nil
-    end
 end
 
 -- ====== МЕНЮ ======
@@ -429,8 +232,8 @@ local function createMenu()
     end)
 
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 240, 0, 420)
-    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -210)
+    mainFrame.Size = UDim2.new(0, 240, 0, 240)
+    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -120)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
@@ -532,11 +335,7 @@ local function createMenu()
     makeToggle("Laser Aimbot", "laser", startLaser, stopLaser)
     makeToggle("Touch Fling", "fling", toggleFling, toggleFling)
     makeToggle("Infinite Jump", "infJump", startInfJump, stopInfJump)
-    makeToggle("ESP", "esp", startESP, stopESP)
-    makeToggle("Night Mode", "night", toggleNight, toggleNight)
     makeToggle("Orbs", "orbs", startOrbs, stopOrbs)
-    makeToggle("Fireflies", "fireflies", startFireflies, stopFireflies)
-    makeToggle("Platform", "platform", startPlatform, stopPlatform)
 
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
@@ -589,4 +388,65 @@ local function showKeyWindow()
     title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = panel
 
-    local i
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 18)
+    info.Position = UDim2.new(0, 0, 0, 42)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(160, 160, 200)
+    info.Text = "Введите ключ доступа"
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = panel
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
+    keyBox.BackgroundTransparency = 0.3
+    keyBox.Font = Enum.Font.GothamBold
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.Text = ""
+    keyBox.PlaceholderText = "Ключ"
+    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
+    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    enterBtn.BackgroundTransparency = 0.2
+    enterBtn.Text = "Войти"
+    enterBtn.TextSize = 16
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local function checkKey()
+        if keyBox.Text == CORRECT_KEY then
+            keyGui:Destroy()
+            createMenu()
+        else
+            keyBox.Text = ""
+            keyBox.PlaceholderText = "Неверно!"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            task.wait(0.6)
+            keyBox.PlaceholderText = "Ключ"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+        end
+    end
+
+    enterBtn.MouseButton1Click:Connect(checkKey)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
+    end)
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
+    end)
+end
+
+showKeyWindow()
