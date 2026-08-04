@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FULL FINAL)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WORKING)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -61,7 +61,7 @@ local orbLights = {}
 
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT
+-- 1. LASER AIMBOT (БЕЛЫЙ, СВЕТЯЩИЙСЯ)
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
@@ -199,7 +199,7 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM (БЫСТРЕЕ, НЕ ВЫШЕ 1 МЕТРА)
+-- 4. ANTI-DEATH PLATFORM
 local function startPlatform()
     platformOn = true
     State.platform = true
@@ -575,4 +575,4 @@ local function stopTimerESP()
                     if main then
                         local timerBB = main:FindFirstChild("TimerESP")
                         if timerBB then timerBB:Destroy() end
-              
+                  
