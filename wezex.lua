@@ -1,6 +1,5 @@
--- WEZEX HUB (AUTONOMOUS) | STEEL BRAINROT
+-- WEZEX HUB (СТАБИЛЬНАЯ ВЕРСИЯ)
 -- КЛЮЧ: 38399923
--- НЕ ТРЕБУЕТ ВНЕШНИХ ССЫЛОК
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -10,7 +9,6 @@ local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
 local Lighting = game:GetService("Lighting")
-local TweenService = game:GetService("TweenService")
 
 -- ====== СОСТОЯНИЯ ======
 local State = {
@@ -21,8 +19,6 @@ local State = {
     night = false,
     orbs = false,
     fireflies = false,
-    shaders = false,
-    skybox = false,
     platform = false,
 }
 
@@ -31,11 +27,10 @@ local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
 local orbConnections = {}
 local fireflyConnections = {}
-local skyConnection = nil
 local platformConnection = nil
 local platformPart = nil
 
-local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, firefliesOn, shadersOn, skyboxOn, platformOn = false, false, false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, firefliesOn, platformOn = false, false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
@@ -337,102 +332,7 @@ local function stopFireflies()
     fireflies = {}
 end
 
--- 8. ШЕЙДЕРЫ
-local function startShaders()
-    shadersOn = true
-    State.shaders = true
-
-    Lighting.Ambient = Color3.fromRGB(80, 80, 100)
-    Lighting.Brightness = 0.8
-    Lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 100)
-    Lighting.ShadowSoftness = 1
-    Lighting.ClockTime = 14
-
-    if not Lighting:FindFirstChild("SunRays") then
-        local sunRays = Instance.new("SunRaysEffect")
-        sunRays.Name = "SunRays"
-        sunRays.Parent = Lighting
-        sunRays.Intensity = 0.5
-        sunRays.Spread = 0.5
-    end
-
-    if not Lighting:FindFirstChild("ColorCorrection") then
-        local colorCorrection = Instance.new("ColorCorrectionEffect")
-        colorCorrection.Name = "ColorCorrection"
-        colorCorrection.Parent = Lighting
-        colorCorrection.Brightness = 0.1
-        colorCorrection.Contrast = 0.1
-        colorCorrection.Saturation = 0.2
-    end
-
-    Lighting.FogEnd = 100
-    Lighting.FogStart = 20
-    Lighting.FogColor = Color3.fromRGB(150, 180, 220)
-end
-
-local function stopShaders()
-    shadersOn = false
-    State.shaders = false
-
-    Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-    Lighting.Brightness = 1
-    Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
-    Lighting.ShadowSoftness = 0
-    Lighting.FogEnd = 1000
-    Lighting.FogStart = 0
-    Lighting.FogColor = Color3.fromRGB(127, 127, 127)
-
-    local sunRays = Lighting:FindFirstChild("SunRays")
-    if sunRays then sunRays:Destroy() end
-    local colorCorrection = Lighting:FindFirstChild("ColorCorrection")
-    if colorCorrection then colorCorrection:Destroy() end
-end
-
--- 9. SKYBOX
-local function startSkybox()
-    skyboxOn = true
-    State.skybox = true
-
-    local sky = Instance.new("Sky")
-    sky.Name = "WezexSky"
-    sky.Parent = Lighting
-
-    sky.SkyboxBk = Color3.fromRGB(40, 30, 60)
-    sky.SkyboxDn = Color3.fromRGB(200, 100, 50)
-    sky.SkyboxFt = Color3.fromRGB(100, 80, 150)
-    sky.SkyboxLf = Color3.fromRGB(150, 100, 200)
-    sky.SkyboxRt = Color3.fromRGB(150, 100, 200)
-    sky.SkyboxUp = Color3.fromRGB(80, 40, 120)
-
-    sky.StarCount = 5000
-    sky.CelestialBodiesShown = true
-    sky.SunAngularSize = 30
-    sky.MoonAngularSize = 20
-    sky.Clouds = Enum.Clouds.Smooth
-
-    skyConnection = RunService.RenderStepped:Connect(function()
-        if not skyboxOn then return end
-        local time = tick() * 0.05
-        local r = math.sin(time) * 0.1 + 0.9
-        local g = math.sin(time + 1) * 0.1 + 0.9
-        local b = math.sin(time + 2) * 0.1 + 0.9
-        sky.SkyboxUp = Color3.new(0.3 * r, 0.2 * g, 0.5 * b)
-    end)
-end
-
-local function stopSkybox()
-    skyboxOn = false
-    State.skybox = false
-
-    if skyConnection then skyConnection:Disconnect(); skyConnection = nil end
-    local sky = Lighting:FindFirstChild("WezexSky")
-    if sky then sky:Destroy() end
-
-    Lighting.StarCount = 0
-    Lighting.CelestialBodiesShown = false
-end
-
--- 10. ПЛАТФОРМА
+-- 8. ПЛАТФОРМА
 local function startPlatform()
     platformOn = true
     State.platform = true
@@ -495,7 +395,7 @@ local function stopPlatform()
     end
 end
 
--- ====== МЕНЮ (НАТИВНОЕ, БЕЗ ВНЕШНИХ ЗАВИСИМОСТЕЙ) ======
+-- ====== МЕНЮ ======
 local screenGui, mainFrame, openBtn = nil, nil, nil
 
 local function createMenu()
@@ -510,7 +410,6 @@ local function createMenu()
     screenGui.IgnoreGuiInset = true
     screenGui.Enabled = true
 
-    -- Кнопка W
     openBtn = Instance.new("TextButton")
     openBtn.Size = UDim2.new(0, 50, 0, 50)
     openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
@@ -523,15 +422,15 @@ local function createMenu()
     openBtn.Parent = screenGui
     Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
     openBtn.Visible = false
+
     openBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openBtn.Visible = false
     end)
 
-    -- Главное меню
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 250, 0, 420)
-    mainFrame.Position = UDim2.new(0.5, -125, 0.5, -210)
+    mainFrame.Size = UDim2.new(0, 240, 0, 420)
+    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -210)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.Parent = screenGui
@@ -559,12 +458,12 @@ local function createMenu()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Parent = mainFrame
     Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
     closeBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = false
         openBtn.Visible = true
     end)
 
-    -- Контейнер с прокруткой
     local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(1, -14, 1, -48)
     content.Position = UDim2.new(0, 7, 0, 40)
@@ -580,7 +479,6 @@ local function createMenu()
     layout.Padding = UDim.new(0, 6)
     layout.Parent = content
 
-    -- Функция создания переключателя
     local function makeToggle(label, stateKey, onFunc, offFunc)
         local f = Instance.new("Frame")
         f.Size = UDim2.new(0.95, 0, 0, 30)
@@ -595,4 +493,100 @@ local function createMenu()
         l.BackgroundTransparency = 1
         l.Font = Enum.Font.GothamBold
         l.TextSize = 11
-        l.TextColor3 = Color3.fromRGB(
+        l.TextColor3 = Color3.fromRGB(220, 210, 255)
+        l.Text = label
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = f
+
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 48, 0, 20)
+        b.Position = UDim2.new(1, -54, 0.5, -10)
+        b.BorderSizePixel = 0
+        b.TextSize = 9
+        b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.Font = Enum.Font.GothamBold
+        b.Parent = f
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+
+        local function update()
+            if State[stateKey] then
+                b.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+                b.Text = "ON"
+            else
+                b.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                b.Text = "OFF"
+            end
+        end
+        update()
+
+        b.MouseButton1Click:Connect(function()
+            if State[stateKey] then
+                if offFunc then offFunc() end
+            else
+                if onFunc then onFunc() end
+            end
+            update()
+        end)
+    end
+
+    makeToggle("Laser Aimbot", "laser", startLaser, stopLaser)
+    makeToggle("Touch Fling", "fling", toggleFling, toggleFling)
+    makeToggle("Infinite Jump", "infJump", startInfJump, stopInfJump)
+    makeToggle("ESP", "esp", startESP, stopESP)
+    makeToggle("Night Mode", "night", toggleNight, toggleNight)
+    makeToggle("Orbs", "orbs", startOrbs, stopOrbs)
+    makeToggle("Fireflies", "fireflies", startFireflies, stopFireflies)
+    makeToggle("Platform", "platform", startPlatform, stopPlatform)
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+    end)
+
+    UserInputService.InputBegan:Connect(function(i)
+        if i.KeyCode == Enum.KeyCode.RightBracket then
+            if mainFrame.Visible then
+                mainFrame.Visible = false
+                openBtn.Visible = true
+            else
+                mainFrame.Visible = true
+                openBtn.Visible = false
+            end
+        end
+    end)
+
+    mainFrame.Visible = true
+    openBtn.Visible = false
+end
+
+-- ====== КЛЮЧ-СИСТЕМА ======
+local function showKeyWindow()
+    pcall(function()
+        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    end)
+
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystem"
+    keyGui.Parent = CoreGui
+    keyGui.ResetOnSpawn = false
+    keyGui.IgnoreGuiInset = true
+
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 260, 0, 150)
+    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = keyGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Wezex Hub"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = panel
+
+    local i
