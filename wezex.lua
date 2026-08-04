@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WITH EFFECTS)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -45,6 +45,7 @@ local espHLs = {}
 local nightConnection = nil
 local orbConnections = {}
 local trailConnection = nil
+local blurEffect = nil
 local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, trailOn = false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
@@ -189,7 +190,6 @@ local function toggleNight()
     nightOn = not nightOn
     State.night = nightOn
     if nightOn then
-        if nightConnection then nightConnection:Disconnect() end
         Lighting.Ambient = Color3.fromRGB(10, 10, 20)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
@@ -200,7 +200,7 @@ local function toggleNight()
     end
 end
 
--- 6. ORBS + ОСВЕЩЕНИЕ
+-- 6. ORBS + РАЗМЫТИЕ (MOTION BLUR)
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -211,6 +211,7 @@ local function createOrb(parent, color, offset)
     orb.CanCollide = false
     orb.Parent = parent
 
+    -- Добавляем свет
     local light = Instance.new("PointLight")
     light.Parent = orb
     light.Color = color
@@ -224,6 +225,15 @@ end
 local function startOrbs()
     orbsOn = true
     State.orbs = true
+
+    -- Создаём эффект размытия (Motion Blur) на камере
+    if not blurEffect then
+        blurEffect = Instance.new("BlurEffect")
+        blurEffect.Parent = Camera
+        blurEffect.Size = 5
+    end
+    blurEffect.Enabled = true
+
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
@@ -236,21 +246,36 @@ local function startOrbs()
         local startPos = offsets[i]
         local conn = RunService.RenderStepped:Connect(function()
             if not orbsOn or not hrp.Parent then return end
-            local time = tick() * 0.5
+            local time = tick() * 1.5
             local offset = Vector3.new(
-                math.sin(time + i * 2.09) * 3,
-                math.cos(time + i * 1.57) * 2 + 2,
-                math.cos(time + i * 1.05) * 3
+                math.sin(time + i * 2.09) * 4,
+                math.cos(time + i * 1.57) * 3 + 2,
+                math.cos(time + i * 1.05) * 4
             )
             orb.Position = hrp.Position + offset
         end)
         table.insert(orbConnections, conn)
     end
+
+    -- Автоматически отключаем размытие, если орбы выключены
+    task.spawn(function()
+        while orbsOn do
+            task.wait(0.5)
+        end
+        if blurEffect then
+            blurEffect.Enabled = false
+        end
+    end)
 end
 
 local function stopOrbs()
     orbsOn = false
     State.orbs = false
+
+    if blurEffect then
+        blurEffect.Enabled = false
+    end
+
     for _, conn in ipairs(orbConnections) do conn:Disconnect() end
     orbConnections = {}
     for _, orb in ipairs(orbs) do orb:Destroy() end
@@ -259,19 +284,29 @@ local function stopOrbs()
     orbLights = {}
 end
 
--- 7. ТРЕЙЛЫ + ОСВЕЩЕНИЕ
+-- 7. ТРЕЙЛЫ + ОСВЕЩЕНИЕ (ИСПРАВЛЕНО)
 local function startTrail()
     trailOn = true
     State.trail = true
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
+    -- Удаляем старый трейл, если есть
+    local oldTrail = hrp:FindFirstChild("WezexTrail")
+    if oldTrail then oldTrail:Destroy() end
+
     local trail = Instance.new("Trail")
     trail.Name = "WezexTrail"
     trail.Parent = hrp
-    trail.Attachment0 = Instance.new("Attachment", hrp)
-    trail.Attachment0.Position = Vector3.new(0, 0, 0)
-    trail.Lifetime = 0.5
+
+    -- Прикрепляем Attachment к HumanoidRootPart
+    local att = Instance.new("Attachment")
+    att.Parent = hrp
+    att.Position = Vector3.new(0, 0, 0)
+    trail.Attachment0 = att
+
+    -- Настройки трейла
+    trail.Lifetime = 0.8
     trail.MinLength = 0.5
     trail.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
@@ -279,21 +314,26 @@ local function startTrail()
         ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 0))
     })
     trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.3),
+        NumberSequenceKeypoint.new(0, 0.2),
         NumberSequenceKeypoint.new(1, 1)
     })
-    trail.Width = NumberSequence.new(0.5)
+    trail.Width = NumberSequence.new(0.8)
 
+    -- Свет от трейла
     local light = Instance.new("PointLight")
     light.Parent = hrp
     light.Color = Color3.fromRGB(255, 100, 255)
     light.Range = 20
-    light.Brightness = 1.5
+    light.Brightness = 2
 
-    trailConnection = RunService.Heartbeat:Connect(function()
-        if not trailOn or not char.Parent then return end
-        -- Обновляем цвет трейла плавно
-        local time = tick() * 0.2
+    -- Анимация цвета света
+    trailConnection = RunService.RenderStepped:Connect(function()
+        if not trailOn or not char.Parent then
+            if light then light.Enabled = false end
+            return
+        end
+        if light then light.Enabled = true end
+        local time = tick() * 0.3
         local r = math.sin(time) * 0.5 + 0.5
         local g = math.sin(time + 2.09) * 0.5 + 0.5
         local b = math.sin(time + 4.18) * 0.5 + 0.5
@@ -313,6 +353,8 @@ local function stopTrail()
             if trail then trail:Destroy() end
             local light = hrp:FindFirstChild("PointLight")
             if light then light:Destroy() end
+            local att = hrp:FindFirstChild("Attachment")
+            if att and att.Name == "" then att:Destroy() end
         end
     end
 end
@@ -501,8 +543,8 @@ function createMainUI()
         end,
     })
     VisualsSection:Toggle({
-        Title = "Orbs",
-        Desc = "Парящие шарики вокруг игрока (с освещением)",
+        Title = "Orbs (Motion Blur)",
+        Desc = "Парящие шарики с эффектом размытия",
         Value = State.orbs,
         Callback = function(v)
             if v ~= State.orbs then
@@ -512,7 +554,7 @@ function createMainUI()
     })
     VisualsSection:Toggle({
         Title = "Trail",
-        Desc = "Красивый светящийся след за игроком (с освещением)",
+        Desc = "Красивый светящийся след за игроком",
         Value = State.trail,
         Callback = function(v)
             if v ~= State.trail then
