@@ -1,13 +1,11 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - CLEAN BASE
+-- WEZEX HUB | STEEL BRAINROT (CLEAN)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local KnifeController
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -22,7 +20,7 @@ do
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+-- ====== КЛЮЧ ======
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
@@ -52,7 +50,7 @@ local function toggleInfJump()
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+-- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -159,7 +157,7 @@ function createMainUI()
         },
     })
 
-    -- MOVEMENT
+    -- ВКЛАДКА MOVEMENT
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
@@ -178,7 +176,7 @@ function createMainUI()
         end,
     })
 
-    -- ABOUT
+    -- ВКЛАДКА ABOUT
     local AboutTab = Window:Tab({
         Title = "About",
         Icon = "solar:info-square-bold",
