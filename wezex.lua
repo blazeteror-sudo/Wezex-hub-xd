@@ -1,16 +1,33 @@
--- WEZEX HUB | STEEL BRAINROT (ИДЕАЛЬНАЯ БАЗА)
--- МЕНЮ КАК В НОЖЕВЫХ ДУЭЛЯХ
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT
+-- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RS = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
 local Workspace = workspace
 
--- ====== СОСТОЯНИЯ ======
+-- ====== ЗАГРУЗКА WINDUI ======
+local WindUI
+do
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+    end)
+    if ok then
+        WindUI = result
+    else
+        error("WindUI не загрузился")
+    end
+end
+
+-- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+local CORRECT_KEY = "38399923"
+local keyVerified = false
+
+-- ====== НАШИ СОСТОЯНИЯ ======
 local State = {
     ws = false,
     wsSpeed = 80,
@@ -28,13 +45,13 @@ local bjConns = {}
 local espHLs = {}
 local wsOn, ijOn, bjOn, laserOn, flingOn, espOn = false, false, false, false, false, false
 
--- ====== WALKSPEED ======
+-- ====== НОВЫЕ ФУНКЦИИ ======
+
+-- 1. WALKSPEED
 local function stopWS()
     if wsConn then wsConn:Disconnect(); wsConn = nil end
-    local c = LP.Character
-    if c and c:FindFirstChild("Humanoid") then
-        c.Humanoid.WalkSpeed = 16
-    end
+    local c = LocalPlayer.Character
+    if c and c:FindFirstChild("Humanoid") then c.Humanoid.WalkSpeed = 16 end
     wsOn = false
     State.ws = false
 end
@@ -43,21 +60,19 @@ local function startWS()
     stopWS()
     wsOn = true
     State.ws = true
-    wsConn = RS.Heartbeat:Connect(function()
-        local c = LP.Character
-        if c and c:FindFirstChild("Humanoid") then
-            c.Humanoid.WalkSpeed = State.wsSpeed
-        end
+    wsConn = RunService.Heartbeat:Connect(function()
+        local c = LocalPlayer.Character
+        if c and c:FindFirstChild("Humanoid") then c.Humanoid.WalkSpeed = State.wsSpeed end
     end)
 end
 
--- ====== INFINITE JUMP ======
+-- 2. INFINITE JUMP
 local function startIJ()
     if ijConn then ijConn:Disconnect() end
     ijOn = true
     State.ij = true
-    ijConn = UIS.JumpRequest:Connect(function()
-        local c = LP.Character
+    ijConn = UserInputService.JumpRequest:Connect(function()
+        local c = LocalPlayer.Character
         if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
             if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
                 c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
@@ -72,15 +87,15 @@ local function stopIJ()
     State.ij = false
 end
 
--- ====== BOOST JUMP ======
+-- 3. BOOST JUMP
 local function startBJ()
     for _, v in pairs(bjConns) do v:Disconnect() end
     bjConns = {}
     bjOn = true
     State.bj = true
     local canBoost = true
-    bjConns[1] = RS.Stepped:Connect(function()
-        local c = LP.Character
+    bjConns[1] = RunService.Stepped:Connect(function()
+        local c = LocalPlayer.Character
         if c and c:FindFirstChild("Humanoid") then
             local s = c.Humanoid:GetState()
             canBoost = s == Enum.HumanoidStateType.Running
@@ -90,16 +105,14 @@ local function startBJ()
                 or s == Enum.HumanoidStateType.PlatformStanding
         end
     end)
-    bjConns[2] = UIS.JumpRequest:Connect(function()
+    bjConns[2] = UserInputService.JumpRequest:Connect(function()
         if not canBoost then return end
-        local c = LP.Character
+        local c = LocalPlayer.Character
         if not c then return end
         local r = c:FindFirstChild("HumanoidRootPart")
         if not r then return end
         local v = Vector3.new(0, State.bjStrength, 0)
-        if r.Velocity.Magnitude > 1 then
-            v = v + r.CFrame.LookVector * 50
-        end
+        if r.Velocity.Magnitude > 1 then v = v + r.CFrame.LookVector * 50 end
         r.Velocity = v
         canBoost = false
     end)
@@ -112,13 +125,13 @@ local function stopBJ()
     State.bj = false
 end
 
--- ====== LASER AIMBOT ======
+-- 4. LASER AIMBOT
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
     State.laser = true
-    laserConn = RS.Heartbeat:Connect(function()
-        local char = LP.Character
+    laserConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
         if not char then return end
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool or not tool.Name:lower():find("laser") then return end
@@ -126,14 +139,11 @@ local function startLaser()
         if not handle then return end
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local h2 = p.Character:FindFirstChild("Humanoid")
                 if h2 and h2.Health > 0 then
                     local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < bestDist then
-                        bestDist = d
-                        best = p
-                    end
+                    if d < bestDist then bestDist = d; best = p end
                 end
             end
         end
@@ -143,17 +153,9 @@ local function startLaser()
                 local dir = (target.Position - handle.Position).Unit
                 handle.CFrame = CFrame.lookAt(handle.Position, handle.Position + dir * 100)
                 local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
-                if remote then
-                    pcall(function() remote:FireServer(target.Position, target) end)
-                end
-                local mouse = LP:GetMouse()
-                if mouse then
-                    pcall(function()
-                        mouse.Button1Down:Fire()
-                        task.wait(0.05)
-                        mouse.Button1Up:Fire()
-                    end)
-                end
+                if remote then pcall(function() remote:FireServer(target.Position, target) end) end
+                local mouse = LocalPlayer:GetMouse()
+                if mouse then pcall(function() mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire() end) end
             end
         end
     end)
@@ -165,13 +167,13 @@ local function stopLaser()
     State.laser = false
 end
 
--- ====== ESP ======
+-- 5. ESP (ОБХОД НЕВИДИМОСТИ)
 local function startESP()
     espOn = true
     State.esp = true
     local function updateESP()
         for _, p in ipairs(Players:GetPlayers()) do
-            if p == LP then continue end
+            if p == LocalPlayer then continue end
             local char = p.Character
             if not char then continue end
             local hl = char:FindFirstChild("WezexESP")
@@ -190,57 +192,42 @@ local function startESP()
         end
     end
     updateESP()
-    local conn1 = Players.PlayerAdded:Connect(function()
-        task.wait(0.5)
-        updateESP()
-    end)
+    local conn1 = Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end)
     table.insert(espHLs, conn1)
-    local conn2 = Workspace.ChildAdded:Connect(function(child)
-        if child:IsA("Model") and child:FindFirstChild("Humanoid") then
-            task.wait(0.3)
-            updateESP()
-        end
-    end)
+    local conn2 = Workspace.ChildAdded:Connect(function(child) if child:IsA("Model") and child:FindFirstChild("Humanoid") then task.wait(0.3); updateESP() end end)
     table.insert(espHLs, conn2)
-    local conn3 = RS.Heartbeat:Connect(updateESP)
+    local conn3 = RunService.Heartbeat:Connect(updateESP)
     table.insert(espHLs, conn3)
 end
 
 local function stopESP()
     espOn = false
     State.esp = false
-    for _, obj in ipairs(espHLs) do
-        if obj and obj.Parent then
-            obj:Destroy()
-        end
-    end
+    for _, obj in ipairs(espHLs) do if obj and obj.Parent then obj:Destroy() end end
     espHLs = {}
 end
 
--- ====== TOUCH FLING ======
+-- 6. TOUCH FLING
 local function toggleFling()
     flingOn = not flingOn
     State.fling = flingOn
     if flingOn then
         if wsOn then stopWS() end
-        pcall(function()
-            local h2 = LP.Character and LP.Character:FindFirstChildWhichIsA("Humanoid")
-            if h2 then h2.AutoJumpEnabled = false end
-        end)
+        pcall(function() local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"); if h2 then h2.AutoJumpEnabled = false end end)
         if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
             local m = Instance.new("Decal")
             m.Name = "juisdfj0i32i0eidsuf0iok"
             m.Parent = RepStorage
         end
-        flingConn = RS.Heartbeat:Connect(function()
-            local c = LP.Character
+        flingConn = RunService.Heartbeat:Connect(function()
+            local c = LocalPlayer.Character
             local r = c and c:FindFirstChild("HumanoidRootPart")
             if r then
                 local v = r.Velocity
                 r.Velocity = v * 10000 + Vector3.new(0,10000,0)
-                RS.RenderStepped:Wait()
+                RunService.RenderStepped:Wait()
                 r.Velocity = v
-                RS.Stepped:Wait()
+                RunService.Stepped:Wait()
                 r.Velocity = v + Vector3.new(0,0.1,0)
             end
         end)
@@ -249,243 +236,252 @@ local function toggleFling()
     end
 end
 
--- ====== МЕНЮ (ИДЕАЛЬНОЕ) ======
-local screenGui, mainFrame, openBtn = nil, nil, nil
-
-local function createMenu()
+-- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+local function showNativeKeyWindow()
     pcall(function()
-        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
+        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
 
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "WezexHub"
-    screenGui.Parent = CoreGui
-    screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
-    screenGui.Enabled = true
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystem"
+    keyGui.Parent = CoreGui
+    keyGui.ResetOnSpawn = false
+    keyGui.IgnoreGuiInset = true
 
-    openBtn = Instance.new("TextButton")
-    openBtn.Size = UDim2.new(0, 50, 0, 50)
-    openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
-    openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
-    openBtn.BackgroundTransparency = 0.15
-    openBtn.Text = "W"
-    openBtn.TextSize = 24
-    openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
-    openBtn.Font = Enum.Font.GothamBold
-    openBtn.Parent = screenGui
-    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-    openBtn.Visible = false
-
-    openBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = true
-        openBtn.Visible = false
-    end)
-
-    mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 240, 0, 340)
-    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -170)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.Parent = screenGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
-    mainFrame.ClipsDescendants = true
-    mainFrame.Visible = true
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 260, 0, 150)
+    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = keyGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
 
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 4)
+    title.Position = UDim2.new(0, 0, 0, 6)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
-    title.TextSize = 18
+    title.TextSize = 20
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "Wezex Hub"
     title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = mainFrame
+    title.Parent = panel
 
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -30, 0, 4)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
-    closeBtn.Text = "✕"
-    closeBtn.TextSize = 14
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Parent = mainFrame
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 18)
+    info.Position = UDim2.new(0, 0, 0, 42)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(160, 160, 200)
+    info.Text = "Введите ключ доступа"
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = panel
 
-    closeBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        openBtn.Visible = true
-    end)
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
+    keyBox.BackgroundTransparency = 0.3
+    keyBox.Font = Enum.Font.GothamBold
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.Text = ""
+    keyBox.PlaceholderText = "Ключ"
+    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-    local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, -14, 1, -48)
-    content.Position = UDim2.new(0, 7, 0, 40)
-    content.BackgroundTransparency = 1
-    content.CanvasSize = UDim2.new(0, 0, 0, 0)
-    content.ScrollBarThickness = 4
-    content.Parent = mainFrame
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
+    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    enterBtn.BackgroundTransparency = 0.2
+    enterBtn.Text = "Войти"
+    enterBtn.TextSize = 16
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.VerticalAlignment = Enum.VerticalAlignment.Top
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 6)
-    layout.Parent = content
-
-    local function createToggle(label, stateKey, onFunc, offFunc)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 30)
-        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-        frame.BackgroundTransparency = 0.4
-        frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.55, 0, 1, 0)
-        lbl.Position = UDim2.new(0.04, 0, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 12
-        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
-        lbl.Text = label
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = frame
-
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 48, 0, 20)
-        btn.Position = UDim2.new(1, -54, 0.5, -10)
-        btn.BorderSizePixel = 0
-        btn.TextSize = 10
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = frame
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
-
-        local function updateButton()
-            if State[stateKey] then
-                btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-                btn.Text = "ON"
-            else
-                btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                btn.Text = "OFF"
-            end
+    local function checkKey()
+        if keyBox.Text == CORRECT_KEY then
+            keyVerified = true
+            keyGui:Destroy()
+            createMainUI()
+        else
+            keyBox.Text = ""
+            keyBox.PlaceholderText = "Неверно!"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            task.wait(0.6)
+            keyBox.PlaceholderText = "Ключ"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
         end
-        updateButton()
-
-        btn.MouseButton1Click:Connect(function()
-            if State[stateKey] then
-                if offFunc then offFunc() end
-            else
-                if onFunc then onFunc() end
-            end
-            updateButton()
-        end)
     end
 
-    local function createSlider(label, stateKey, min, max, step)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.95, 0, 0, 40)
-        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
-        frame.BackgroundTransparency = 0.4
-        frame.Parent = content
-        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.5, 0, 1, 0)
-        lbl.Position = UDim2.new(0.04, 0, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 12
-        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
-        lbl.Text = label
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = frame
-
-        local val = Instance.new("TextLabel")
-        val.Size = UDim2.new(0.2, 0, 1, 0)
-        val.Position = UDim2.new(0.76, 0, 0, 0)
-        val.BackgroundTransparency = 1
-        val.Font = Enum.Font.GothamBold
-        val.TextSize = 12
-        val.TextColor3 = Color3.fromRGB(255, 255, 255)
-        val.Text = tostring(State[stateKey])
-        val.TextXAlignment = Enum.TextXAlignment.Right
-        val.Parent = frame
-
-        local slider = Instance.new("Frame")
-        slider.Size = UDim2.new(0.6, 0, 0, 6)
-        slider.Position = UDim2.new(0.04, 0, 0.7, 0)
-        slider.BackgroundColor3 = Color3.fromRGB(50, 40, 70)
-        slider.Parent = frame
-        Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-
-        local fill = Instance.new("Frame")
-        fill.Size = UDim2.new((State[stateKey] - min) / (max - min), 0, 1, 0)
-        fill.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-        fill.BorderSizePixel = 0
-        fill.Parent = slider
-        Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
-
-        local dragging = false
-        local sliderBtn = Instance.new("TextButton")
-        sliderBtn.Size = UDim2.new(1, 0, 1, 0)
-        sliderBtn.BackgroundTransparency = 1
-        sliderBtn.Text = ""
-        sliderBtn.Parent = slider
-
-        sliderBtn.MouseButton1Down:Connect(function() dragging = true end)
-        UIS.InputEnded:Connect(function(i)
-            if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-        end)
-        UIS.InputChanged:Connect(function(i)
-            if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-                local pos = math.clamp((i.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-                local v = min + (max - min) * pos
-                v = math.round(v / step) * step
-                State[stateKey] = v
-                fill.Size = UDim2.new((v - min) / (max - min), 0, 1, 0)
-                val.Text = tostring(v)
-                if stateKey == "wsSpeed" and wsOn then
-                    local c = LP.Character
-                    if c and c:FindFirstChild("Humanoid") then
-                        c.Humanoid.WalkSpeed = v
-                    end
-                end
-            end
-        end)
-    end
-
-    -- ====== ЭЛЕМЕНТЫ МЕНЮ ======
-    createToggle("Walkspeed", "ws", startWS, stopWS)
-    createSlider("Speed", "wsSpeed", 50, 120, 1)
-
-    createToggle("Infinite Jump", "ij", startIJ, stopIJ)
-    createToggle("Boost Jump", "bj", startBJ, stopBJ)
-    createSlider("Boost Str", "bjStrength", 50, 300, 5)
-
-    createToggle("Laser Aimbot", "laser", startLaser, stopLaser)
-    createToggle("ESP", "esp", startESP, stopESP)
-    createToggle("Touch Fling", "fling", toggleFling, toggleFling)
-
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+    enterBtn.MouseButton1Click:Connect(checkKey)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
     end)
-
-    UIS.InputBegan:Connect(function(i)
-        if i.KeyCode == Enum.KeyCode.RightBracket then
-            if mainFrame.Visible then
-                mainFrame.Visible = false
-                openBtn.Visible = true
-            else
-                mainFrame.Visible = true
-                openBtn.Visible = false
-            end
-        end
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
     end)
-
-    mainFrame.Visible = true
-    openBtn.Visible = false
 end
 
-createMenu()
+-- ====== ТВОЙ GUI НА WINDUI (С НОВЫМИ ФУНКЦИЯМИ) ======
+function createMainUI()
+    local Window = WindUI:CreateWindow({
+        Title = "Wezex Hub v4.1",
+        Folder = "WezexHub",
+        Icon = "solar:folder-2-bold-duotone",
+        OpenButton = {
+            Title = "Wezex Hub",
+            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
+            Draggable = true,
+            Scale = 0.5,
+        },
+    })
+
+    -- ВКЛАДКА COMBAT
+    local CombatTab = Window:Tab({
+        Title = "Combat",
+        Icon = "solar:sword-bold",
+    })
+    local CombatSection = CombatTab:Section({
+        Title = "⚔️ Combat Settings",
+    })
+    CombatSection:Toggle({
+        Title = "Laser Aimbot",
+        Desc = "Автострельба лазером по игрокам",
+        Value = State.laser,
+        Callback = function(v)
+            if v ~= State.laser then
+                if v then startLaser() else stopLaser() end
+            end
+        end,
+    })
+    CombatSection:Toggle({
+        Title = "Touch Fling",
+        Desc = "Вылетает из карты",
+        Value = State.fling,
+        Callback = function(v)
+            if v ~= State.fling then
+                toggleFling()
+            end
+        end,
+    })
+
+    -- ВКЛАДКА MOVEMENT
+    local MovementTab = Window:Tab({
+        Title = "Movement",
+        Icon = "solar:running-bold",
+    })
+    local MovementSection = MovementTab:Section({
+        Title = "🏃 Movement Settings",
+    })
+    MovementSection:Toggle({
+        Title = "Walkspeed",
+        Desc = "Увеличенная скорость",
+        Value = State.ws,
+        Callback = function(v)
+            if v ~= State.ws then
+                if v then startWS() else stopWS() end
+            end
+        end,
+    })
+    MovementSection:Slider({
+        Title = "Speed",
+        Desc = "Скорость бега",
+        Value = State.wsSpeed,
+        Min = 50,
+        Max = 120,
+        Rounding = 1,
+        Callback = function(v)
+            State.wsSpeed = v
+            if wsOn then
+                local c = LocalPlayer.Character
+                if c and c:FindFirstChild("Humanoid") then
+                    c.Humanoid.WalkSpeed = v
+                end
+            end
+        end,
+    })
+    MovementSection:Toggle({
+        Title = "Infinite Jump",
+        Desc = "Бесконечные прыжки",
+        Value = State.ij,
+        Callback = function(v)
+            if v ~= State.ij then
+                if v then startIJ() else stopIJ() end
+            end
+        end,
+    })
+    MovementSection:Toggle({
+        Title = "Boost Jump",
+        Desc = "Усиленный прыжок",
+        Value = State.bj,
+        Callback = function(v)
+            if v ~= State.bj then
+                if v then startBJ() else stopBJ() end
+            end
+        end,
+    })
+    MovementSection:Slider({
+        Title = "Boost Strength",
+        Desc = "Сила усиленного прыжка",
+        Value = State.bjStrength,
+        Min = 50,
+        Max = 300,
+        Rounding = 5,
+        Callback = function(v)
+            State.bjStrength = v
+        end,
+    })
+
+    -- ВКЛАДКА VISUALS
+    local VisualsTab = Window:Tab({
+        Title = "Visuals",
+        Icon = "solar:eye-bold",
+    })
+    local VisualsSection = VisualsTab:Section({
+        Title = "👁️ Visual Settings",
+    })
+    VisualsSection:Toggle({
+        Title = "ESP",
+        Desc = "Подсветка игроков (сквозь стены)",
+        Value = State.esp,
+        Callback = function(v)
+            if v ~= State.esp then
+                if v then startESP() else stopESP() end
+            end
+        end,
+    })
+
+    -- ВКЛАДКА ABOUT
+    local AboutTab = Window:Tab({
+        Title = "About",
+        Icon = "solar:info-square-bold",
+    })
+    local AboutSection = AboutTab:Section({
+        Title = "Wezex Hub v4.1",
+    })
+    AboutSection:Button({
+        Title = "Destroy Window",
+        Color = Color3.fromRGB(255, 50, 50),
+        Callback = function()
+            Window:Destroy()
+        end,
+    })
+
+    -- Синхронизация
+    if State.ws then startWS() end
+    if State.ij then startIJ() end
+    if State.bj then startBJ() end
+    if State.esp then startESP() end
+    if State.laser then startLaser() end
+    if State.fling then toggleFling() end
+end
+
+-- ====== ЗАПУСК ======
+showNativeKeyWindow()
