@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
+local Lighting = game:GetService("Lighting")
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -27,105 +28,32 @@ end
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
--- ====== НАШИ СОСТОЯНИЯ ======
+-- ====== СОСТОЯНИЯ ======
 local State = {
-    ws = false,
-    wsSpeed = 80,
-    ij = false,
-    bj = false,
-    bjStrength = 150,
-    esp = false,
     laser = false,
     fling = false,
+    infJump = false,
+    esp = false,
+    night = false,
+    orbs = false,
+    trail = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
-local wsConn, ijConn, laserConn, flingConn = nil, nil, nil, nil
-local bjConns = {}
+local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
-local wsOn, ijOn, bjOn, laserOn, flingOn, espOn = false, false, false, false, false, false
+local nightConnection = nil
+local orbConnections = {}
+local trailConnection = nil
+local laserOn, flingOn, infJumpOn, espOn, nightOn, orbsOn, trailOn = false, false, false, false, false, false, false
 
--- ====== НОВЫЕ ФУНКЦИИ ======
+-- ====== ORB ПЕРЕМЕННЫЕ ======
+local orbs = {}
+local orbLights = {}
 
--- 1. WALKSPEED
-local function stopWS()
-    if wsConn then wsConn:Disconnect(); wsConn = nil end
-    local c = LocalPlayer.Character
-    if c and c:FindFirstChild("Humanoid") then c.Humanoid.WalkSpeed = 16 end
-    wsOn = false
-    State.ws = false
-end
+-- ====== ФУНКЦИИ ======
 
-local function startWS()
-    stopWS()
-    wsOn = true
-    State.ws = true
-    wsConn = RunService.Heartbeat:Connect(function()
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then c.Humanoid.WalkSpeed = State.wsSpeed end
-    end)
-end
-
--- 2. INFINITE JUMP
-local function startIJ()
-    if ijConn then ijConn:Disconnect() end
-    ijOn = true
-    State.ij = true
-    ijConn = UserInputService.JumpRequest:Connect(function()
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
-            if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
-            end
-        end
-    end)
-end
-
-local function stopIJ()
-    if ijConn then ijConn:Disconnect(); ijConn = nil end
-    ijOn = false
-    State.ij = false
-end
-
--- 3. BOOST JUMP
-local function startBJ()
-    for _, v in pairs(bjConns) do v:Disconnect() end
-    bjConns = {}
-    bjOn = true
-    State.bj = true
-    local canBoost = true
-    bjConns[1] = RunService.Stepped:Connect(function()
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then
-            local s = c.Humanoid:GetState()
-            canBoost = s == Enum.HumanoidStateType.Running
-                or s == Enum.HumanoidStateType.RunningNoPhysics
-                or s == Enum.HumanoidStateType.Landed
-                or s == Enum.HumanoidStateType.Seated
-                or s == Enum.HumanoidStateType.PlatformStanding
-        end
-    end)
-    bjConns[2] = UserInputService.JumpRequest:Connect(function()
-        if not canBoost then return end
-        local c = LocalPlayer.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
-        local v = Vector3.new(0, State.bjStrength, 0)
-        if r.Velocity.Magnitude > 1 then v = v + r.CFrame.LookVector * 50 end
-        r.Velocity = v
-        canBoost = false
-    end)
-end
-
-local function stopBJ()
-    for _, v in pairs(bjConns) do v:Disconnect() end
-    bjConns = {}
-    bjOn = false
-    State.bj = false
-end
-
--- 4. LASER AIMBOT
+-- 1. LASER AIMBOT
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
@@ -167,7 +95,56 @@ local function stopLaser()
     State.laser = false
 end
 
--- 5. ESP (ОБХОД НЕВИДИМОСТИ)
+-- 2. TOUCH FLING
+local function toggleFling()
+    flingOn = not flingOn
+    State.fling = flingOn
+    if flingOn then
+        pcall(function() local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"); if h2 then h2.AutoJumpEnabled = false end end)
+        if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+            local m = Instance.new("Decal")
+            m.Name = "juisdfj0i32i0eidsuf0iok"
+            m.Parent = RepStorage
+        end
+        flingConn = RunService.Heartbeat:Connect(function()
+            local c = LocalPlayer.Character
+            local r = c and c:FindFirstChild("HumanoidRootPart")
+            if r then
+                local v = r.Velocity
+                r.Velocity = v * 10000 + Vector3.new(0,10000,0)
+                RunService.RenderStepped:Wait()
+                r.Velocity = v
+                RunService.Stepped:Wait()
+                r.Velocity = v + Vector3.new(0,0.1,0)
+            end
+        end)
+    else
+        if flingConn then flingConn:Disconnect(); flingConn = nil end
+    end
+end
+
+-- 3. INFINITE JUMP
+local function startInfJump()
+    if infJumpConn then infJumpConn:Disconnect() end
+    infJumpOn = true
+    State.infJump = true
+    infJumpConn = UserInputService.JumpRequest:Connect(function()
+        local c = LocalPlayer.Character
+        if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
+            if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
+            end
+        end
+    end)
+end
+
+local function stopInfJump()
+    if infJumpConn then infJumpConn:Disconnect(); infJumpConn = nil end
+    infJumpOn = false
+    State.infJump = false
+end
+
+-- 4. ESP (ОБХОД НЕВИДИМОСТИ)
 local function startESP()
     espOn = true
     State.esp = true
@@ -207,36 +184,140 @@ local function stopESP()
     espHLs = {}
 end
 
--- 6. TOUCH FLING
-local function toggleFling()
-    flingOn = not flingOn
-    State.fling = flingOn
-    if flingOn then
-        if wsOn then stopWS() end
-        pcall(function() local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"); if h2 then h2.AutoJumpEnabled = false end end)
-        if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
-            local m = Instance.new("Decal")
-            m.Name = "juisdfj0i32i0eidsuf0iok"
-            m.Parent = RepStorage
-        end
-        flingConn = RunService.Heartbeat:Connect(function()
-            local c = LocalPlayer.Character
-            local r = c and c:FindFirstChild("HumanoidRootPart")
-            if r then
-                local v = r.Velocity
-                r.Velocity = v * 10000 + Vector3.new(0,10000,0)
-                RunService.RenderStepped:Wait()
-                r.Velocity = v
-                RunService.Stepped:Wait()
-                r.Velocity = v + Vector3.new(0,0.1,0)
-            end
-        end)
+-- 5. НОЧЬ
+local function toggleNight()
+    nightOn = not nightOn
+    State.night = nightOn
+    if nightOn then
+        if nightConnection then nightConnection:Disconnect() end
+        Lighting.Ambient = Color3.fromRGB(10, 10, 20)
+        Lighting.Brightness = 0.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
     else
-        if flingConn then flingConn:Disconnect(); flingConn = nil end
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+-- 6. ORBS + ОСВЕЩЕНИЕ
+local function createOrb(parent, color, offset)
+    local orb = Instance.new("Part")
+    orb.Size = Vector3.new(1, 1, 1)
+    orb.Shape = Enum.PartType.Ball
+    orb.Material = Enum.Material.Neon
+    orb.Color = color
+    orb.Anchored = true
+    orb.CanCollide = false
+    orb.Parent = parent
+
+    local light = Instance.new("PointLight")
+    light.Parent = orb
+    light.Color = color
+    light.Range = 15
+    light.Brightness = 2
+    table.insert(orbLights, light)
+
+    return orb
+end
+
+local function startOrbs()
+    orbsOn = true
+    State.orbs = true
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    local colors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 0, 255), Color3.fromRGB(255, 255, 0)}
+    local offsets = {Vector3.new(3, 0, 0), Vector3.new(-3, 0, 0), Vector3.new(0, 0, 3)}
+
+    for i = 1, 3 do
+        local orb = createOrb(hrp, colors[i], offsets[i])
+        table.insert(orbs, orb)
+        local startPos = offsets[i]
+        local conn = RunService.RenderStepped:Connect(function()
+            if not orbsOn or not hrp.Parent then return end
+            local time = tick() * 0.5
+            local offset = Vector3.new(
+                math.sin(time + i * 2.09) * 3,
+                math.cos(time + i * 1.57) * 2 + 2,
+                math.cos(time + i * 1.05) * 3
+            )
+            orb.Position = hrp.Position + offset
+        end)
+        table.insert(orbConnections, conn)
+    end
+end
+
+local function stopOrbs()
+    orbsOn = false
+    State.orbs = false
+    for _, conn in ipairs(orbConnections) do conn:Disconnect() end
+    orbConnections = {}
+    for _, orb in ipairs(orbs) do orb:Destroy() end
+    orbs = {}
+    for _, light in ipairs(orbLights) do light:Destroy() end
+    orbLights = {}
+end
+
+-- 7. ТРЕЙЛЫ + ОСВЕЩЕНИЕ
+local function startTrail()
+    trailOn = true
+    State.trail = true
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    local trail = Instance.new("Trail")
+    trail.Name = "WezexTrail"
+    trail.Parent = hrp
+    trail.Attachment0 = Instance.new("Attachment", hrp)
+    trail.Attachment0.Position = Vector3.new(0, 0, 0)
+    trail.Lifetime = 0.5
+    trail.MinLength = 0.5
+    trail.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 0))
+    })
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.3),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    trail.Width = NumberSequence.new(0.5)
+
+    local light = Instance.new("PointLight")
+    light.Parent = hrp
+    light.Color = Color3.fromRGB(255, 100, 255)
+    light.Range = 20
+    light.Brightness = 1.5
+
+    trailConnection = RunService.Heartbeat:Connect(function()
+        if not trailOn or not char.Parent then return end
+        -- Обновляем цвет трейла плавно
+        local time = tick() * 0.2
+        local r = math.sin(time) * 0.5 + 0.5
+        local g = math.sin(time + 2.09) * 0.5 + 0.5
+        local b = math.sin(time + 4.18) * 0.5 + 0.5
+        light.Color = Color3.new(r, g, b)
+    end)
+end
+
+local function stopTrail()
+    trailOn = false
+    State.trail = false
+    if trailConnection then trailConnection:Disconnect(); trailConnection = nil end
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local trail = hrp:FindFirstChild("WezexTrail")
+            if trail then trail:Destroy() end
+            local light = hrp:FindFirstChild("PointLight")
+            if light then light:Destroy() end
+        end
+    end
+end
+
+-- ====== ОКНО КЛЮЧА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -329,7 +410,7 @@ local function showNativeKeyWindow()
     end)
 end
 
--- ====== ТВОЙ GUI НА WINDUI (С НОВЫМИ ФУНКЦИЯМИ) ======
+-- ====== GUI ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
         Title = "Wezex Hub v4.1",
@@ -381,61 +462,13 @@ function createMainUI()
         Title = "🏃 Movement Settings",
     })
     MovementSection:Toggle({
-        Title = "Walkspeed",
-        Desc = "Увеличенная скорость",
-        Value = State.ws,
-        Callback = function(v)
-            if v ~= State.ws then
-                if v then startWS() else stopWS() end
-            end
-        end,
-    })
-    MovementSection:Slider({
-        Title = "Speed",
-        Desc = "Скорость бега",
-        Value = State.wsSpeed,
-        Min = 50,
-        Max = 120,
-        Rounding = 1,
-        Callback = function(v)
-            State.wsSpeed = v
-            if wsOn then
-                local c = LocalPlayer.Character
-                if c and c:FindFirstChild("Humanoid") then
-                    c.Humanoid.WalkSpeed = v
-                end
-            end
-        end,
-    })
-    MovementSection:Toggle({
         Title = "Infinite Jump",
         Desc = "Бесконечные прыжки",
-        Value = State.ij,
+        Value = State.infJump,
         Callback = function(v)
-            if v ~= State.ij then
-                if v then startIJ() else stopIJ() end
+            if v ~= State.infJump then
+                if v then startInfJump() else stopInfJump() end
             end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Boost Jump",
-        Desc = "Усиленный прыжок",
-        Value = State.bj,
-        Callback = function(v)
-            if v ~= State.bj then
-                if v then startBJ() else stopBJ() end
-            end
-        end,
-    })
-    MovementSection:Slider({
-        Title = "Boost Strength",
-        Desc = "Сила усиленного прыжка",
-        Value = State.bjStrength,
-        Min = 50,
-        Max = 300,
-        Rounding = 5,
-        Callback = function(v)
-            State.bjStrength = v
         end,
     })
 
@@ -457,6 +490,36 @@ function createMainUI()
             end
         end,
     })
+    VisualsSection:Toggle({
+        Title = "Night Mode",
+        Desc = "Делает ночь в игре",
+        Value = State.night,
+        Callback = function(v)
+            if v ~= State.night then
+                toggleNight()
+            end
+        end,
+    })
+    VisualsSection:Toggle({
+        Title = "Orbs",
+        Desc = "Парящие шарики вокруг игрока (с освещением)",
+        Value = State.orbs,
+        Callback = function(v)
+            if v ~= State.orbs then
+                if v then startOrbs() else stopOrbs() end
+            end
+        end,
+    })
+    VisualsSection:Toggle({
+        Title = "Trail",
+        Desc = "Красивый светящийся след за игроком (с освещением)",
+        Value = State.trail,
+        Callback = function(v)
+            if v ~= State.trail then
+                if v then startTrail() else stopTrail() end
+            end
+        end,
+    })
 
     -- ВКЛАДКА ABOUT
     local AboutTab = Window:Tab({
@@ -475,12 +538,13 @@ function createMainUI()
     })
 
     -- Синхронизация
-    if State.ws then startWS() end
-    if State.ij then startIJ() end
-    if State.bj then startBJ() end
-    if State.esp then startESP() end
     if State.laser then startLaser() end
     if State.fling then toggleFling() end
+    if State.infJump then startInfJump() end
+    if State.esp then startESP() end
+    if State.night then toggleNight() end
+    if State.orbs then startOrbs() end
+    if State.trail then startTrail() end
 end
 
 -- ====== ЗАПУСК ======
