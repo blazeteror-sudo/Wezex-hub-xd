@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FIXED)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -54,37 +54,56 @@ local orbLights = {}
 
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT
+-- 1. LASER AIMBOT (ФИКС: НЕ СТРЕЛЯЕТ В СЕБЯ)
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
     State.laser = true
+
     laserConn = RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
+
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool or not tool.Name:lower():find("laser") then return end
+
         local handle = tool:FindFirstChild("Handle")
         if not handle then return end
+
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p == LocalPlayer then continue end  -- НЕ СТРЕЛЯЕМ В СЕБЯ
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local h2 = p.Character:FindFirstChild("Humanoid")
                 if h2 and h2.Health > 0 then
                     local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < bestDist then bestDist = d; best = p end
+                    if d < bestDist then
+                        bestDist = d
+                        best = p
+                    end
                 end
             end
         end
+
         if best and best.Character then
             local target = best.Character:FindFirstChild("HumanoidRootPart")
             if target then
                 local dir = (target.Position - handle.Position).Unit
                 handle.CFrame = CFrame.lookAt(handle.Position, handle.Position + dir * 100)
+
                 local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
-                if remote then pcall(function() remote:FireServer(target.Position, target) end) end
+                if remote then
+                    pcall(function() remote:FireServer(target.Position, target) end)
+                end
+
                 local mouse = LocalPlayer:GetMouse()
-                if mouse then pcall(function() mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire() end) end
+                if mouse then
+                    pcall(function()
+                        mouse.Button1Down:Fire()
+                        task.wait(0.05)
+                        mouse.Button1Up:Fire()
+                    end)
+                end
             end
         end
     end)
@@ -145,14 +164,14 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM
+-- 4. ANTI-DEATH PLATFORM (УМЕНЬШЕННАЯ, ПОДНИМАЕТСЯ ТОЛЬКО НА 2 БЛОКА)
 local function startPlatform()
     platformOn = true
     State.platform = true
 
     platformPart = Instance.new("Part")
-    platformPart.Size = Vector3.new(10, 1, 10)
-    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
+    platformPart.Size = Vector3.new(6, 1, 6)  -- УМЕНЬШИЛИ
+    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
     platformPart.Anchored = true
     platformPart.CanCollide = true
     platformPart.Transparency = 0.5
@@ -163,8 +182,8 @@ local function startPlatform()
     local light = Instance.new("PointLight")
     light.Parent = platformPart
     light.Color = Color3.fromRGB(0, 255, 255)
-    light.Range = 15
-    light.Brightness = 2
+    light.Range = 10
+    light.Brightness = 1.5
 
     platformConnection = RunService.RenderStepped:Connect(function()
         if not platformOn then return end
@@ -172,11 +191,18 @@ local function startPlatform()
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        platformPart.Position = hrp.Position - Vector3.new(0, 3, 0)
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
-            platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
+
+        -- Поднимаем платформу только на 2 блока выше игрока
+        local targetY = hrp.Position.Y - 1.5
+        if platformPart.Position.Y < targetY then
+            platformPart.Position = platformPart.Position + Vector3.new(0, 0.1, 0)
         end
+        if platformPart.Position.Y > targetY then
+            platformPart.Position = Vector3.new(platformPart.Position.X, targetY, platformPart.Position.Z)
+        end
+
+        -- Следуем за игроком по X и Z
+        platformPart.Position = Vector3.new(hrp.Position.X, platformPart.Position.Y, hrp.Position.Z)
     end)
 
     task.spawn(function()
@@ -248,7 +274,7 @@ local function stopESP()
     espHLs = {}
 end
 
--- 6. НОЧЬ
+-- 6. НОЧЬ (ВСЕГДА, ДАЖЕ КОГДА В ИГРЕ ДЕНЬ)
 local function toggleNight()
     nightOn = not nightOn
     State.night = nightOn
@@ -256,14 +282,18 @@ local function toggleNight()
         Lighting.Ambient = Color3.fromRGB(10, 10, 20)
         Lighting.Brightness = 0.2
         Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
+        Lighting.TimeOfDay = "00:00:00"  -- ПРИНУДИТЕЛЬНО СТАВИМ НОЧЬ
+        Lighting.ClockTime = 0
     else
         Lighting.Ambient = Color3.fromRGB(127, 127, 127)
         Lighting.Brightness = 1
         Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.TimeOfDay = "12:00:00"
+        Lighting.ClockTime = 12
     end
 end
 
--- 7. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ, БЕЗ РАЗМЫТИЯ)
+-- 7. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ)
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -274,7 +304,6 @@ local function createOrb(parent, color, offset)
     orb.CanCollide = false
     orb.Parent = parent
 
-    -- Шлейф (Trail) для шарика
     local trail = Instance.new("Trail")
     trail.Parent = orb
     trail.Attachment0 = Instance.new("Attachment", orb)
@@ -292,7 +321,6 @@ local function createOrb(parent, color, offset)
     })
     trail.Width = NumberSequence.new(1.5)
 
-    -- Свет от шара
     local light = Instance.new("PointLight")
     light.Parent = orb
     light.Color = color
@@ -528,7 +556,7 @@ function createMainUI()
     })
     VisualsSection:Toggle({
         Title = "Night Mode",
-        Desc = "Делает ночь в игре",
+        Desc = "Постоянная ночь (даже днём)",
         Value = State.night,
         Callback = function(v)
             if v ~= State.night then
