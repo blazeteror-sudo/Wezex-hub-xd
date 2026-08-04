@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FULL RESTORE)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) - ORIGINAL WORKING
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -7,8 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local RepStorage = game:GetService("ReplicatedStorage")
-local Workspace = workspace
+local KnifeController
 local Lighting = game:GetService("Lighting")
 
 -- ====== ЗАГРУЗКА WINDUI ======
@@ -28,37 +27,204 @@ end
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
--- ====== СОСТОЯНИЯ ======
+-- ====== НАШИ СОСТОЯНИЯ ======
 local State = {
+    esp = false,
+    knifeAim = false,
+    noclip = false,
+    infJump = false,
     laser = false,
     fling = false,
-    infJump = false,
-    platform = false,
-    esp = false,
-    night = false,
     orbs = false,
-    blueOrb = false,
+    night = false,
+    platform = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
-local laserConn, flingConn, infJumpConn = nil, nil, nil
-local espHLs = {}
+local espHighlights = {}
+local espConnections = {}
+local wsConn, flingConn, infJumpConn = nil, nil, nil
 local orbConnections = {}
 local platformConnection = nil
 local platformPart = nil
-local blueOrbConn = nil
-local blueOrbPart = nil
-local blueOrbLight = nil
+local laserConn = nil
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, blueOrbOn = false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn = false, false, false, false, false, false, false
 
--- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
 local orbLights = {}
 
--- ====== ФУНКЦИИ ======
+-- ====== ESP ======
+local function clearESP()
+    for _, h in ipairs(espHighlights) do
+        if h and h.Parent then h:Destroy() end
+    end
+    espHighlights = {}
+    for _, c in ipairs(espConnections) do
+        if c then c:Disconnect() end
+    end
+    espConnections = {}
+end
 
--- 1. LASER AIMBOT
+local function applyESP(player)
+    if player == LocalPlayer then return end
+    local function setup(char)
+        local old = char:FindFirstChild("WezexESP")
+        if old then old:Destroy() end
+        local targetPart = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+        if not targetPart then return end
+        local h = Instance.new("Highlight")
+        h.Name = "WezexESP"
+        h.Adornee = targetPart
+        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+            h.FillColor = Color3.fromRGB(0, 255, 0)
+        elseif player.Team and LocalPlayer.Team and player.Team ~= LocalPlayer.Team then
+            h.FillColor = Color3.fromRGB(255, 50, 50)
+        else
+            h.FillColor = Color3.fromRGB(255, 255, 0)
+        end
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillTransparency = 0.3
+        h.OutlineTransparency = 0
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Parent = char
+        table.insert(espHighlights, h)
+    end
+    if player.Character then setup(player.Character) end
+    local conn = player.CharacterAdded:Connect(setup)
+    table.insert(espConnections, conn)
+end
+
+local function toggleESP()
+    State.esp = not State.esp
+    if State.esp then
+        clearESP()
+        for _, p in ipairs(Players:GetPlayers()) do
+            applyESP(p)
+        end
+        table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
+    else
+        clearESP()
+    end
+end
+
+-- ====== SILENT AIM ======
+getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
+local originalThrow = nil
+
+local function getClosestTarget()
+    local best, bestFOV = nil, getgenv().KnifeConfig.FOV
+    local center = Camera.ViewportSize / 2
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            local part = plr.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or plr.Character:FindFirstChild("HumanoidRootPart")
+            if part then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if d < bestFOV then best, bestFOV = plr, d end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function applyKnifeAim()
+    if not KnifeController then
+        local success, result = pcall(function()
+            return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
+        end)
+        if success then
+            KnifeController = result
+        else
+            return
+        end
+    end
+
+    if State.knifeAim then
+        if not originalThrow then
+            originalThrow = KnifeController._GetThrowDirection
+        end
+        KnifeController._GetThrowDirection = function(self, origin)
+            if getgenv().KnifeConfig.Enabled then
+                local target = getClosestTarget()
+                if target and target.Character then
+                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or target.Character:FindFirstChild("HumanoidRootPart")
+                    if part then
+                        return (part.Position - origin.Position).Unit
+                    end
+                end
+            end
+            return originalThrow(self, origin)
+        end
+    else
+        if originalThrow and KnifeController then
+            KnifeController._GetThrowDirection = originalThrow
+            originalThrow = nil
+        end
+    end
+end
+
+local function toggleKnifeAim()
+    State.knifeAim = not State.knifeAim
+    getgenv().KnifeConfig.Enabled = State.knifeAim
+    applyKnifeAim()
+end
+
+-- ====== NOCLIP ======
+local noclipConnection = nil
+local function toggleNoclip()
+    State.noclip = not State.noclip
+    if State.noclip then
+        if noclipConnection then noclipConnection:Disconnect() end
+        noclipConnection = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+-- ====== INFINITE JUMP ======
+local infJumpConnection = nil
+local function toggleInfJump()
+    State.infJump = not State.infJump
+    if State.infJump then
+        if infJumpConnection then infJumpConnection:Disconnect() end
+        infJumpConnection = UserInputService.JumpRequest:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if infJumpConnection then
+            infJumpConnection:Disconnect()
+            infJumpConnection = nil
+        end
+    end
+end
+
+-- ====== LASER AIMBOT ======
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
@@ -106,7 +272,7 @@ local function startLaser()
         if best and best.Character then
             local target = best.Character:FindFirstChild("HumanoidRootPart")
             if target then
-                local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
+                local remote = game:GetService("ReplicatedStorage"):FindFirstChild("LaserRemote") or game:GetService("ReplicatedStorage"):FindFirstChild("ShootRemote")
                 if remote then
                     pcall(function() remote:FireServer(target.Position, target) end)
                 else
@@ -147,16 +313,16 @@ local function stopLaser()
     end
 end
 
--- 2. TOUCH FLING
+-- ====== TOUCH FLING ======
 local function toggleFling()
     flingOn = not flingOn
     State.fling = flingOn
     if flingOn then
         pcall(function() local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"); if h2 then h2.AutoJumpEnabled = false end end)
-        if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+        if not game:GetService("ReplicatedStorage"):FindFirstChild("juisdfj0i32i0eidsuf0iok") then
             local m = Instance.new("Decal")
             m.Name = "juisdfj0i32i0eidsuf0iok"
-            m.Parent = RepStorage
+            m.Parent = game:GetService("ReplicatedStorage")
         end
         flingConn = RunService.Heartbeat:Connect(function()
             local c = LocalPlayer.Character
@@ -175,28 +341,26 @@ local function toggleFling()
     end
 end
 
--- 3. INFINITE JUMP
-local function startInfJump()
-    if infJumpConn then infJumpConn:Disconnect() end
-    infJumpOn = true
-    State.infJump = true
-    infJumpConn = UserInputService.JumpRequest:Connect(function()
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
-            if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
-            end
-        end
-    end)
+-- ====== NIGHT MODE ======
+local function toggleNight()
+    nightOn = not nightOn
+    State.night = nightOn
+    if nightOn then
+        Lighting.Ambient = Color3.fromRGB(10, 10, 20)
+        Lighting.Brightness = 0.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
+        Lighting.TimeOfDay = "00:00:00"
+        Lighting.ClockTime = 0
+    else
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.TimeOfDay = "12:00:00"
+        Lighting.ClockTime = 12
+    end
 end
 
-local function stopInfJump()
-    if infJumpConn then infJumpConn:Disconnect(); infJumpConn = nil end
-    infJumpOn = false
-    State.infJump = false
-end
-
--- 4. ANTI-DEATH PLATFORM
+-- ====== ANTI-DEATH PLATFORM ======
 local function startPlatform()
     platformOn = true
     State.platform = true
@@ -209,7 +373,7 @@ local function startPlatform()
     platformPart.Transparency = 0.4
     platformPart.Material = Enum.Material.Neon
     platformPart.Color = Color3.fromRGB(0, 255, 255)
-    platformPart.Parent = Workspace
+    platformPart.Parent = workspace
 
     local light = Instance.new("PointLight")
     light.Parent = platformPart
@@ -264,67 +428,8 @@ local function stopPlatform()
     end
 end
 
--- 5. ESP
-local function startESP()
-    espOn = true
-    State.esp = true
-    local function updateESP()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p == LocalPlayer then continue end
-            local char = p.Character
-            if not char then continue end
-            local hl = char:FindFirstChild("WezexESP")
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "WezexESP"
-                hl.Adornee = char
-                hl.FillColor = Color3.fromRGB(255, 50, 50)
-                hl.FillTransparency = 0.2
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.OutlineTransparency = 0.1
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Parent = char
-                table.insert(espHLs, hl)
-            end
-        end
-    end
-    updateESP()
-    local conn1 = Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end)
-    table.insert(espHLs, conn1)
-    local conn2 = Workspace.ChildAdded:Connect(function(child) if child:IsA("Model") and child:FindFirstChild("Humanoid") then task.wait(0.3); updateESP() end end)
-    table.insert(espHLs, conn2)
-    local conn3 = RunService.Heartbeat:Connect(updateESP)
-    table.insert(espHLs, conn3)
-end
-
-local function stopESP()
-    espOn = false
-    State.esp = false
-    for _, obj in ipairs(espHLs) do if obj and obj.Parent then obj:Destroy() end end
-    espHLs = {}
-end
-
--- 6. НОЧЬ
-local function toggleNight()
-    nightOn = not nightOn
-    State.night = nightOn
-    if nightOn then
-        Lighting.Ambient = Color3.fromRGB(10, 10, 20)
-        Lighting.Brightness = 0.2
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
-        Lighting.TimeOfDay = "00:00:00"
-        Lighting.ClockTime = 0
-    else
-        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
-        Lighting.TimeOfDay = "12:00:00"
-        Lighting.ClockTime = 12
-    end
-end
-
--- 7. ORBS
-local function createOrb(hrp, color, index)
+-- ====== ORBS (КРУГИ) ======
+local function createOrb(parent, color, index)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
     orb.Shape = Enum.PartType.Ball
@@ -332,12 +437,12 @@ local function createOrb(hrp, color, index)
     orb.Color = color
     orb.Anchored = true
     orb.CanCollide = false
-    orb.Parent = hrp
+    orb.Parent = parent
 
     local trail = Instance.new("Trail")
     trail.Parent = orb
     trail.Attachment0 = Instance.new("Attachment", orb)
-    trail.Lifetime = 0.5
+    trail.Lifetime = 0.4
     trail.MinLength = 0.2
     trail.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, color),
@@ -349,7 +454,7 @@ local function createOrb(hrp, color, index)
         NumberSequenceKeypoint.new(0.5, 0.3),
         NumberSequenceKeypoint.new(1, 1)
     })
-    trail.Width = NumberSequence.new(1.5)
+    trail.Width = NumberSequence.new(1.2)
 
     local light = Instance.new("PointLight")
     light.Parent = orb
@@ -414,95 +519,7 @@ local function stopOrbs()
     orbLights = {}
 end
 
--- 8. СИНИЙ ШАРИК
-local function startBlueOrb()
-    blueOrbOn = true
-    State.blueOrb = true
-
-    local function setupBlueOrb()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
-        if blueOrbPart and blueOrbPart.Parent then
-            blueOrbPart:Destroy()
-            blueOrbPart = nil
-        end
-        if blueOrbLight then
-            blueOrbLight:Destroy()
-            blueOrbLight = nil
-        end
-
-        blueOrbPart = Instance.new("Part")
-        blueOrbPart.Size = Vector3.new(0.8, 0.8, 0.8)
-        blueOrbPart.Shape = Enum.PartType.Ball
-        blueOrbPart.Material = Enum.Material.Neon
-        blueOrbPart.Color = Color3.fromRGB(0, 100, 255)
-        blueOrbPart.Anchored = true
-        blueOrbPart.CanCollide = false
-        blueOrbPart.Parent = hrp
-
-        local trail = Instance.new("Trail")
-        trail.Parent = blueOrbPart
-        trail.Attachment0 = Instance.new("Attachment", blueOrbPart)
-        trail.Lifetime = 0.4
-        trail.MinLength = 0.2
-        trail.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 100, 255)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 150, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
-        })
-        trail.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.1),
-            NumberSequenceKeypoint.new(0.5, 0.3),
-            NumberSequenceKeypoint.new(1, 1)
-        })
-        trail.Width = NumberSequence.new(1.2)
-
-        blueOrbLight = Instance.new("PointLight")
-        blueOrbLight.Parent = blueOrbPart
-        blueOrbLight.Color = Color3.fromRGB(0, 100, 255)
-        blueOrbLight.Range = 15
-        blueOrbLight.Brightness = 2.5
-
-        blueOrbConn = RunService.RenderStepped:Connect(function()
-            if not blueOrbOn or not hrp.Parent then return end
-            local time = tick() * 0.5
-            local offset = Vector3.new(
-                math.sin(time) * 0.3,
-                math.cos(time * 0.7) * 0.2 + 1.2,
-                -3.5 + math.cos(time * 0.5) * 0.2
-            )
-            blueOrbPart.Position = hrp.Position + offset
-        end)
-    end
-
-    setupBlueOrb()
-    LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        setupBlueOrb()
-    end)
-end
-
-local function stopBlueOrb()
-    blueOrbOn = false
-    State.blueOrb = false
-    if blueOrbConn then
-        blueOrbConn:Disconnect()
-        blueOrbConn = nil
-    end
-    if blueOrbPart then
-        blueOrbPart:Destroy()
-        blueOrbPart = nil
-    end
-    if blueOrbLight then
-        blueOrbLight:Destroy()
-        blueOrbLight = nil
-    end
-end
-
--- ====== ОКНО КЛЮЧА ======
+-- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -572,32 +589,4 @@ local function showNativeKeyWindow()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
     local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyVerified = true
-            keyGui:Destroy()
-            createMainUI()
-        else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-        end
-    end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
-end
-
--- ====== GUI ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
-        Folder = "WezexHub",
-        Ico
+        if keyBox.Text == 
