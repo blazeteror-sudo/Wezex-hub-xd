@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (NO SKYBOX)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FULL RESTORE)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -37,7 +37,6 @@ local State = {
     esp = false,
     night = false,
     orbs = false,
-    timerEsp = false,
     blueOrb = false,
 }
 
@@ -51,7 +50,7 @@ local blueOrbConn = nil
 local blueOrbPart = nil
 local blueOrbLight = nil
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, timerOn, blueOrbOn = false, false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, blueOrbOn = false, false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
@@ -324,7 +323,7 @@ local function toggleNight()
     end
 end
 
--- 7. ORBS (КРАСНЫЙ, СИНИЙ, ЖЁЛТЫЙ)
+-- 7. ORBS
 local function createOrb(hrp, color, index)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -415,7 +414,7 @@ local function stopOrbs()
     orbLights = {}
 end
 
--- 8. СИНИЙ ШАРИК (СЗАДИ)
+-- 8. СИНИЙ ШАРИК
 local function startBlueOrb()
     blueOrbOn = true
     State.blueOrb = true
@@ -503,81 +502,102 @@ local function stopBlueOrb()
     end
 end
 
--- 9. TIMER ESP
-local function startTimerESP()
-    timerOn = true
-    State.timerEsp = true
+-- ====== ОКНО КЛЮЧА ======
+local function showNativeKeyWindow()
+    pcall(function()
+        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
+    end)
 
-    task.spawn(function()
-        while timerOn do
-            pcall(function()
-                local plots = Workspace:FindFirstChild("Plots")
-                if not plots then return end
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystem"
+    keyGui.Parent = CoreGui
+    keyGui.ResetOnSpawn = false
+    keyGui.IgnoreGuiInset = true
 
-                for _, plot in ipairs(plots:GetChildren()) do
-                    local purch = plot:FindFirstChild("Purchases")
-                    if not purch then continue end
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 260, 0, 150)
+    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = keyGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
 
-                    for _, p2 in ipairs(purch:GetChildren()) do
-                        local main = p2:FindFirstChild("Main")
-                        if main then
-                            local billboard = main:FindFirstChild("BillboardGui")
-                            if billboard then
-                                local remainingTime = billboard:FindFirstChild("RemainingTime")
-                                local locked = billboard:FindFirstChild("Locked")
-                                if remainingTime and locked and locked.Visible then
-                                    local timerBB = main:FindFirstChild("TimerESP")
-                                    if not timerBB then
-                                        timerBB = Instance.new("BillboardGui")
-                                        timerBB.Name = "TimerESP"
-                                        timerBB.Adornee = main
-                                        timerBB.Size = UDim2.new(0, 150, 0, 30)
-                                        timerBB.StudsOffset = Vector3.new(0, 5, 0)
-                                        timerBB.AlwaysOnTop = true
-                                        timerBB.Parent = main
-                                        local lbl = Instance.new("TextLabel")
-                                        lbl.Size = UDim2.new(1, 0, 1, 0)
-                                        lbl.BackgroundTransparency = 1
-                                        lbl.TextScaled = true
-                                        lbl.Font = Enum.Font.GothamBold
-                                        lbl.TextColor3 = Color3.fromRGB(0, 255, 0)
-                                        lbl.Text = ""
-                                        lbl.Parent = timerBB
-                                    end
-                                    local lbl = timerBB:FindFirstChildOfClass("TextLabel")
-                                    if lbl then
-                                        lbl.Text = remainingTime.Text
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-            task.wait(2)
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Wezex Hub"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = panel
+
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 18)
+    info.Position = UDim2.new(0, 0, 0, 42)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(160, 160, 200)
+    info.Text = "Введите ключ доступа"
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = panel
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
+    keyBox.BackgroundTransparency = 0.3
+    keyBox.Font = Enum.Font.GothamBold
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.Text = ""
+    keyBox.PlaceholderText = "Ключ"
+    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
+    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    enterBtn.BackgroundTransparency = 0.2
+    enterBtn.Text = "Войти"
+    enterBtn.TextSize = 16
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local function checkKey()
+        if keyBox.Text == CORRECT_KEY then
+            keyVerified = true
+            keyGui:Destroy()
+            createMainUI()
+        else
+            keyBox.Text = ""
+            keyBox.PlaceholderText = "Неверно!"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            task.wait(0.6)
+            keyBox.PlaceholderText = "Ключ"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
         end
+    end
+
+    enterBtn.MouseButton1Click:Connect(checkKey)
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
+    end)
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
     end)
 end
 
-local function stopTimerESP()
-    timerOn = false
-    State.timerEsp = false
-
-    local plots = Workspace:FindFirstChild("Plots")
-    if plots then
-        for _, plot in ipairs(plots:GetChildren()) do
-            local purch = plot:FindFirstChild("Purchases")
-            if purch then
-                for _, p2 in ipairs(purch:GetChildren()) do
-                    local main = p2:FindFirstChild("Main")
-                    if main then
-                        local timerBB = main:FindFirstChild("TimerESP")
-                        if timerBB then timerBB:Destroy() end
-                    end
-                end
-            end
-        end
-    end
-end
-
--- ====== ОКНО КЛ
+-- ====== GUI ======
+function createMainUI()
+    local Window = WindUI:CreateWindow({
+        Title = "Wezex Hub v4.1",
+        Folder = "WezexHub",
+        Ico
