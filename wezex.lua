@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WORKING)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (NO SKYBOX)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -38,7 +38,6 @@ local State = {
     night = false,
     orbs = false,
     timerEsp = false,
-    skybox = false,
     blueOrb = false,
 }
 
@@ -48,12 +47,11 @@ local espHLs = {}
 local orbConnections = {}
 local platformConnection = nil
 local platformPart = nil
-local skyConnection = nil
 local blueOrbConn = nil
 local blueOrbPart = nil
 local blueOrbLight = nil
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, timerOn, skyOn, blueOrbOn = false, false, false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, timerOn, blueOrbOn = false, false, false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
@@ -61,7 +59,7 @@ local orbLights = {}
 
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT (БЕЛЫЙ, СВЕТЯЩИЙСЯ)
+-- 1. LASER AIMBOT
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
@@ -575,4 +573,11 @@ local function stopTimerESP()
                     if main then
                         local timerBB = main:FindFirstChild("TimerESP")
                         if timerBB then timerBB:Destroy() end
-                  
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ====== ОКНО КЛ
