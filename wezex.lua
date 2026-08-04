@@ -1,117 +1,63 @@
--- WEZEX HUB | STEEL BRAINROT (NO KEY)
--- ВСЕ ФУНКЦИИ + ИДЕАЛЬНОЕ МЕНЮ
+-- WEZEX HUB | STEEL BRAINROT (ИДЕАЛЬНАЯ БАЗА)
+-- МЕНЮ КАК В НОЖЕВЫХ ДУЭЛЯХ
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LP = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local RepStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = workspace
-local TweenService = game:GetService("TweenService")
 
 -- ====== СОСТОЯНИЯ ======
 local State = {
-    wsEnabled = false,
+    ws = false,
     wsSpeed = 80,
-    ijEnabled = false,
-    bjEnabled = false,
+    ij = false,
+    bj = false,
     bjStrength = 150,
-    espEnabled = false,
-    timerEsp = false,
-    webAim = false,
-    antiTrap = false,
-    antiHit = false,
-    hvEsp = false,
+    esp = false,
+    laser = false,
     fling = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
-local wsConn = nil
-local flingConn = nil
-local espConns = {}
-local espBBs = {}
-local timerConns = {}
-local webConn = nil
-local ijConn = nil
+local wsConn, ijConn, laserConn, flingConn = nil, nil, nil, nil
 local bjConns = {}
-local atConn = nil
-local hvBase, hvGui = nil, nil
-local wsOn = false
-local flingOn = false
-local espOn = false
-local timerOn = false
-local webOn = false
-local ijOn = false
-local bjOn = false
-local atOn = false
-local ahOn = false
-local hvOn = false
+local espHLs = {}
+local wsOn, ijOn, bjOn, laserOn, flingOn, espOn = false, false, false, false, false, false
 
 -- ====== WALKSPEED ======
 local function stopWS()
     if wsConn then wsConn:Disconnect(); wsConn = nil end
-    local c = LocalPlayer.Character
-    if c then
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if r then
-            local vf = r:FindFirstChild("ConstantMoveForce")
-            if vf then vf:Destroy() end
-            local at = r:FindFirstChildOfClass("Attachment")
-            if at then at:Destroy() end
-        end
+    local c = LP.Character
+    if c and c:FindFirstChild("Humanoid") then
+        c.Humanoid.WalkSpeed = 16
     end
     wsOn = false
-    State.wsEnabled = false
+    State.ws = false
 end
 
 local function startWS()
     stopWS()
-    local c = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local root = c:WaitForChild("HumanoidRootPart")
-    local h = c:WaitForChild("Humanoid")
-
-    local cloak = LocalPlayer.Backpack:FindFirstChild("Invisibility Cloak") or c:FindFirstChild("Invisibility Cloak")
-    if cloak and cloak:IsA("Tool") then
-        if cloak.Parent ~= c then cloak.Parent = c; task.wait(0.1) end
-        cloak:Activate()
-    end
-
-    local att = Instance.new("Attachment", root)
-    local vf = Instance.new("VectorForce")
-    vf.Name = "ConstantMoveForce"
-    vf.Attachment0 = att
-    vf.RelativeTo = Enum.ActuatorRelativeTo.World
-    vf.ApplyAtCenterOfMass = true
-    vf.Force = Vector3.zero
-    vf.Parent = root
-
-    wsConn = RunService.RenderStepped:Connect(function()
-        local dir = h.MoveDirection
-        if dir.Magnitude > 0 then
-            local want = dir.Unit * State.wsSpeed
-            local vel = root.Velocity
-            local flat = Vector3.new(vel.X, 0, vel.Z)
-            local fix = (want - flat) * 100 - flat * 0.9
-            vf.Force = Vector3.new(fix.X, 0, fix.Z)
-        else
-            vf.Force = Vector3.zero
+    wsOn = true
+    State.ws = true
+    wsConn = RS.Heartbeat:Connect(function()
+        local c = LP.Character
+        if c and c:FindFirstChild("Humanoid") then
+            c.Humanoid.WalkSpeed = State.wsSpeed
         end
     end)
-
-    wsOn = true
-    State.wsEnabled = true
 end
 
 -- ====== INFINITE JUMP ======
 local function startIJ()
     if ijConn then ijConn:Disconnect() end
     ijOn = true
-    State.ijEnabled = true
-    ijConn = UserInputService.JumpRequest:Connect(function()
-        local c = LocalPlayer.Character
+    State.ij = true
+    ijConn = UIS.JumpRequest:Connect(function()
+        local c = LP.Character
         if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
             if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
                 c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
@@ -123,7 +69,7 @@ end
 local function stopIJ()
     if ijConn then ijConn:Disconnect(); ijConn = nil end
     ijOn = false
-    State.ijEnabled = false
+    State.ij = false
 end
 
 -- ====== BOOST JUMP ======
@@ -131,12 +77,10 @@ local function startBJ()
     for _, v in pairs(bjConns) do v:Disconnect() end
     bjConns = {}
     bjOn = true
-    State.bjEnabled = true
-
+    State.bj = true
     local canBoost = true
-
-    bjConns[1] = RunService.Stepped:Connect(function()
-        local c = LocalPlayer.Character
+    bjConns[1] = RS.Stepped:Connect(function()
+        local c = LP.Character
         if c and c:FindFirstChild("Humanoid") then
             local s = c.Humanoid:GetState()
             canBoost = s == Enum.HumanoidStateType.Running
@@ -146,10 +90,9 @@ local function startBJ()
                 or s == Enum.HumanoidStateType.PlatformStanding
         end
     end)
-
-    bjConns[2] = UserInputService.JumpRequest:Connect(function()
+    bjConns[2] = UIS.JumpRequest:Connect(function()
         if not canBoost then return end
-        local c = LocalPlayer.Character
+        local c = LP.Character
         if not c then return end
         local r = c:FindFirstChild("HumanoidRootPart")
         if not r then return end
@@ -166,447 +109,383 @@ local function stopBJ()
     for _, v in pairs(bjConns) do v:Disconnect() end
     bjConns = {}
     bjOn = false
-    State.bjEnabled = false
+    State.bj = false
 end
 
--- ====== ANTI TRAP ======
-local function startAT()
-    if atConn then atConn:Disconnect() end
-    atOn = true
-    State.antiTrap = true
-    atConn = RunService.Heartbeat:Connect(function()
-        local trap = Workspace:FindFirstChild("Trap")
-        if trap and trap:IsA("Model") then trap:Destroy() end
-    end)
-end
-
-local function stopAT()
-    if atConn then atConn:Disconnect(); atConn = nil end
-    atOn = false
-    State.antiTrap = false
-end
-
--- ====== ANTI HIT ======
-local function startAH()
-    ahOn = true
-    State.antiHit = true
-
-    local c = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local rem = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem")
-    local buyRem = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy")
-
-    local function getWeb()
-        for _, t in ipairs(LocalPlayer.Backpack:GetChildren()) do
-            if t:IsA("Tool") and t.Name == "Web Slinger" then return t end
-        end
-    end
-
-    local function ensureWeb()
-        if not getWeb() then buyRem:InvokeServer("Web Slinger") end
-    end
-
-    local function equipWeb()
-        local cur = c:FindFirstChildOfClass("Tool")
-        if cur and cur.Name ~= "Web Slinger" then cur.Parent = LocalPlayer.Backpack end
-        local t = getWeb()
-        if t then t.Parent = c end
-    end
-
-    local function useWeb()
-        local t = c:FindFirstChild("Web Slinger")
-        if t and t:FindFirstChild("Handle") then
-            rem:FireServer(Vector3.new(-391.2, -7.29, 124.8), c:WaitForChild("UpperTorso"))
-        end
-    end
-
-    local last = 0
-    RunService.Heartbeat:Connect(function()
-        if not ahOn then return end
-        if tick() - last >= 3.5 then
-            last = tick()
-            ensureWeb()
-            task.wait(0.3)
-            equipWeb()
-            task.wait(3.5)
-            useWeb()
-        end
-    end)
-
-    task.defer(function()
-        RunService.RenderStepped:Connect(function()
-            if not ahOn then return end
-            local h2 = c:FindFirstChildOfClass("Humanoid")
-            if h2 and h2.PlatformStand then h2.PlatformStand = false end
-        end)
-    end)
-end
-
-local function stopAH()
-    ahOn = false
-    State.antiHit = false
-end
-
--- ====== WEB SLINGER AIM ======
-local function startWeb()
-    if webConn then webConn:Disconnect() end
-    local tool = LocalPlayer.Backpack:FindFirstChild("Web Slinger") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Web Slinger"))
-    if not tool then
-        pcall(function()
-            ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy"):InvokeServer("Web Slinger")
-        end)
-        task.wait(1)
-        tool = LocalPlayer.Backpack:FindFirstChild("Web Slinger") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Web Slinger"))
-        if not tool then return end
-    end
-
-    webOn = true
-    State.webAim = true
-
-    local handle = tool:WaitForChild("Handle")
-
-    webConn = tool.Activated:Connect(function()
+-- ====== LASER AIMBOT ======
+local function startLaser()
+    if laserConn then laserConn:Disconnect() end
+    laserOn = true
+    State.laser = true
+    laserConn = RS.Heartbeat:Connect(function()
+        local char = LP.Character
+        if not char then return end
+        local tool = char:FindFirstChildOfClass("Tool")
+        if not tool or not tool.Name:lower():find("laser") then return end
+        local handle = tool:FindFirstChild("Handle")
+        if not handle then return end
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local h2 = p.Character:FindFirstChild("Humanoid")
                 if h2 and h2.Health > 0 then
                     local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < bestDist then bestDist = d; best = p end
+                    if d < bestDist then
+                        bestDist = d
+                        best = p
+                    end
                 end
             end
         end
         if best and best.Character then
-            local tp = best.Character:FindFirstChild("HumanoidRootPart")
-            if tp then
-                local pos = tp.Position
-                ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem"):FireServer(
-                    Vector3.new(pos.X, pos.Y, pos.Z), tp, handle
-                )
+            local target = best.Character:FindFirstChild("HumanoidRootPart")
+            if target then
+                local dir = (target.Position - handle.Position).Unit
+                handle.CFrame = CFrame.lookAt(handle.Position, handle.Position + dir * 100)
+                local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
+                if remote then
+                    pcall(function() remote:FireServer(target.Position, target) end)
+                end
+                local mouse = LP:GetMouse()
+                if mouse then
+                    pcall(function()
+                        mouse.Button1Down:Fire()
+                        task.wait(0.05)
+                        mouse.Button1Up:Fire()
+                    end)
+                end
             end
         end
     end)
 end
 
-local function stopWeb()
-    if webConn then webConn:Disconnect(); webConn = nil end
-    webOn = false
-    State.webAim = false
+local function stopLaser()
+    if laserConn then laserConn:Disconnect(); laserConn = nil end
+    laserOn = false
+    State.laser = false
 end
 
 -- ====== ESP ======
-local function addHL(p2)
-    if p2 == LocalPlayer or not p2.Character then return end
-    local col = Color3.fromRGB(math.random(50,255), math.random(50,255), math.random(50,255))
-    local hl = Instance.new("Highlight")
-    hl.Name = "ZHL"
-    hl.FillColor = col
-    hl.OutlineColor = col
-    hl.FillTransparency = 0.3
-    hl.OutlineTransparency = 0
-    hl.Adornee = p2.Character
-    hl.Parent = p2.Character
-
-    local bb = Instance.new("BillboardGui")
-    bb.Name = "ZHBB"
-    bb.Adornee = p2.Character:FindFirstChild("Head")
-    bb.Size = UDim2.new(0,100,0,50)
-    bb.StudsOffset = Vector3.new(0,2,0)
-    bb.AlwaysOnTop = true
-    bb.Parent = p2.Character
-
-    local nl = Instance.new("TextLabel")
-    nl.Size = UDim2.new(1,0,0.5,0)
-    nl.BackgroundTransparency = 1
-    nl.Text = p2.Name
-    nl.TextColor3 = Color3.new(1,1,1)
-    nl.TextScaled = true
-    nl.Font = Enum.Font.GothamBold
-    nl.Parent = bb
-
-    local dl = Instance.new("TextLabel")
-    dl.Size = UDim2.new(1,0,0.5,0)
-    dl.Position = UDim2.new(0,0,0.5,0)
-    dl.BackgroundTransparency = 1
-    dl.Text = p2.DisplayName
-    dl.TextColor3 = Color3.fromRGB(200,200,200)
-    dl.TextScaled = true
-    dl.Font = Enum.Font.Gotham
-    dl.Parent = bb
-
-    espBBs[p2] = bb
-end
-
-local function clearHL(p2)
-    if p2.Character then
-        local hl = p2.Character:FindFirstChild("ZHL")
-        if hl then hl:Destroy() end
-    end
-    if espBBs[p2] then espBBs[p2]:Destroy(); espBBs[p2] = nil end
-end
-
 local function startESP()
-    for _, p2 in pairs(Players:GetPlayers()) do clearHL(p2) end
-    for _, c2 in pairs(espConns) do c2:Disconnect() end
-    espConns = {}
     espOn = true
-    State.espEnabled = true
-    for _, p2 in pairs(Players:GetPlayers()) do addHL(p2) end
-    espConns[1] = Players.PlayerAdded:Connect(function(p2)
-        p2.CharacterAdded:Connect(function() addHL(p2) end)
+    State.esp = true
+    local function updateESP()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p == LP then continue end
+            local char = p.Character
+            if not char then continue end
+            local hl = char:FindFirstChild("WezexESP")
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "WezexESP"
+                hl.Adornee = char
+                hl.FillColor = Color3.fromRGB(255, 50, 50)
+                hl.FillTransparency = 0.2
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.OutlineTransparency = 0.1
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Parent = char
+                table.insert(espHLs, hl)
+            end
+        end
+    end
+    updateESP()
+    local conn1 = Players.PlayerAdded:Connect(function()
+        task.wait(0.5)
+        updateESP()
     end)
-    espConns[2] = Players.PlayerRemoving:Connect(function(p2)
-        clearHL(p2)
+    table.insert(espHLs, conn1)
+    local conn2 = Workspace.ChildAdded:Connect(function(child)
+        if child:IsA("Model") and child:FindFirstChild("Humanoid") then
+            task.wait(0.3)
+            updateESP()
+        end
     end)
+    table.insert(espHLs, conn2)
+    local conn3 = RS.Heartbeat:Connect(updateESP)
+    table.insert(espHLs, conn3)
 end
 
 local function stopESP()
     espOn = false
-    State.espEnabled = false
-    for _, p2 in pairs(Players:GetPlayers()) do clearHL(p2) end
-    for _, c2 in pairs(espConns) do c2:Disconnect() end
-    espConns = {}
-end
-
--- ====== TIMER ESP ======
-local function setBillboard(part, txt, show)
-    local ex = part:FindFirstChild("ZTimerBB")
-    if show then
-        if not ex then
-            local bb = Instance.new("BillboardGui")
-            bb.Name = "ZTimerBB"
-            bb.Adornee = part
-            bb.Size = UDim2.new(0,200,0,50)
-            bb.StudsOffset = Vector3.new(0,5,0)
-            bb.AlwaysOnTop = true
-            bb.Parent = part
-            local lbl = Instance.new("TextLabel")
-            lbl.Name = "T"
-            lbl.Size = UDim2.new(1,0,1,0)
-            lbl.BackgroundTransparency = 1
-            lbl.TextScaled = true
-            lbl.TextColor3 = Color3.new(1,1,1)
-            lbl.TextStrokeTransparency = 0.2
-            lbl.Font = Enum.Font.GothamBold
-            lbl.Text = txt
-            lbl.Parent = bb
-        else
-            local lbl = ex:FindFirstChild("T")
-            if lbl then lbl.Text = txt end
+    State.esp = false
+    for _, obj in ipairs(espHLs) do
+        if obj and obj.Parent then
+            obj:Destroy()
         end
-    else
-        if ex then ex:Destroy() end
     end
+    espHLs = {}
 end
 
-local function getLowest(purchases)
-    local res, resY = nil, nil
-    for _, p2 in pairs(purchases:GetChildren()) do
-        local m = p2:FindFirstChild("Main")
-        local g = m and m:FindFirstChild("BillboardGui")
-        local rt = g and g:FindFirstChild("RemainingTime")
-        local lk = g and g:FindFirstChild("Locked")
-        if m and rt and lk and rt:IsA("TextLabel") and lk:IsA("GuiObject") and lk.Visible then
-            local y = m.Position.Y
-            if not resY or y < resY then
-                res = {rt=rt, lk=lk, m=m}
-                resY = y
+-- ====== TOUCH FLING ======
+local function toggleFling()
+    flingOn = not flingOn
+    State.fling = flingOn
+    if flingOn then
+        if wsOn then stopWS() end
+        pcall(function()
+            local h2 = LP.Character and LP.Character:FindFirstChildWhichIsA("Humanoid")
+            if h2 then h2.AutoJumpEnabled = false end
+        end)
+        if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+            local m = Instance.new("Decal")
+            m.Name = "juisdfj0i32i0eidsuf0iok"
+            m.Parent = RepStorage
+        end
+        flingConn = RS.Heartbeat:Connect(function()
+            local c = LP.Character
+            local r = c and c:FindFirstChild("HumanoidRootPart")
+            if r then
+                local v = r.Velocity
+                r.Velocity = v * 10000 + Vector3.new(0,10000,0)
+                RS.RenderStepped:Wait()
+                r.Velocity = v
+                RS.Stepped:Wait()
+                r.Velocity = v + Vector3.new(0,0.1,0)
             end
-        end
-    end
-    return res
-end
-
-local function scanTimers()
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return end
-    for _, plot in pairs(plots:GetChildren()) do
-        local purch = plot:FindFirstChild("Purchases")
-        if purch then
-            local sel = getLowest(purch)
-            for _, p2 in pairs(purch:GetChildren()) do
-                local m = p2:FindFirstChild("Main")
-                local g = m and m:FindFirstChild("BillboardGui")
-                local rt = g and g:FindFirstChild("RemainingTime")
-                local lk = g and g:FindFirstChild("Locked")
-                if m and rt and lk and rt:IsA("TextLabel") and lk:IsA("GuiObject") then
-                    local isit = sel and rt == sel.rt
-                    setBillboard(m, rt.Text, isit)
-                    local key = rt:GetDebugId()
-                    if isit and not timerConns[key] then
-                        local function refresh()
-                            local still = (getLowest(purch) or {}).rt == rt
-                            setBillboard(m, rt.Text, still and lk.Visible)
-                        end
-                        timerConns[key] = {
-                            rt:GetPropertyChangedSignal("Text"):Connect(refresh),
-                            lk:GetPropertyChangedSignal("Visible"):Connect(refresh)
-                        }
-                    end
-                end
-            end
-        end
-    end
-end
-
-local function startTimer()
-    timerOn = true
-    State.timerEsp = true
-    task.spawn(function()
-        while timerOn do
-            pcall(scanTimers)
-            task.wait(5)
-        end
-    end)
-end
-
-local function stopTimer()
-    timerOn = false
-    State.timerEsp = false
-    local plots = Workspace:FindFirstChild("Plots")
-    if plots then
-        for _, plot in pairs(plots:GetChildren()) do
-            local purch = plot:FindFirstChild("Purchases")
-            if purch then
-                for _, p2 in pairs(purch:GetChildren()) do
-                    local m = p2:FindFirstChild("Main")
-                    if m then
-                        local bb = m:FindFirstChild("ZTimerBB")
-                        if bb then bb:Destroy() end
-                    end
-                end
-            end
-        end
-    end
-    for _, cs in pairs(timerConns) do
-        for _, c2 in ipairs(cs) do c2:Disconnect() end
-    end
-    timerConns = {}
-end
-
--- ====== HIGH VALUE ESP ======
-local mutColors = {
-    Gold = Color3.fromRGB(255,215,0),
-    Diamond = Color3.fromRGB(0,255,255),
-    Lava = Color3.fromRGB(255,100,0),
-    Bloodrot = Color3.fromRGB(255,0,0),
-}
-
-local function parseNum(str)
-    if not str then return 0 end
-    local s = str:match("%$(.-)/s")
-    if not s then return 0 end
-    s = s:gsub("%s","")
-    local mult = 1
-    if s:lower():find("k") then mult = 1000; s = s:gsub("[kK]","")
-    elseif s:lower():find("m") then mult = 1e6; s = s:gsub("[mM]","")
-    elseif s:lower():find("b") then mult = 1e9; s = s:gsub("[bB]","") end
-    return (tonumber(s) or 0) * mult
-end
-
-local function getMut(mut)
-    if not mut or not mut.Visible or mut.Text == "" then return "Default", Color3.new(1,1,1), false end
-    if mut.Text == "Rainbow" then return "Rainbow", Color3.new(1,1,1), true end
-    return mut.Text, mutColors[mut.Text] or Color3.new(1,1,1), false
-end
-
-local function makeBB(base2, overhead, info)
-    if base2:FindFirstChild("ZHV") then base2.ZHV:Destroy() end
-    local bb = Instance.new("BillboardGui")
-    bb.Name = "ZHV"
-    bb.Size = UDim2.new(0,200,0,60)
-    bb.StudsOffset = Vector3.new(0,3,0)
-    bb.AlwaysOnTop = true
-    bb.Adornee = base2
-    bb.Parent = base2
-
-    local lbls = {}
-    local function mkLabel(i, txt)
-        local l = Instance.new("TextLabel")
-        l.Size = UDim2.new(1,0,0.25,0)
-        l.Position = UDim2.new(0,0,0.25*(i-1),0)
-        l.BackgroundTransparency = 1
-        l.TextScaled = true
-        l.Font = Enum.Font.SourceSansBold
-        l.TextStrokeTransparency = 0.5
-        l.Text = txt or "?"
-        l.TextColor3 = Color3.new(1,1,1)
-        l.Parent = bb
-        table.insert(lbls, l)
-    end
-
-    mkLabel(1, info.name)
-    mkLabel(2, info.gen)
-    mkLabel(3, info.mut)
-    mkLabel(4, info.rar)
-
-    if info.mut == "Rainbow" then
-        local t = 0
-        RunService.RenderStepped:Connect(function(dt)
-            if bb.Parent == nil then return end
-            t = t + dt * 0.2
-            local rc = Color3.fromHSV(t % 1, 1, 1)
-            for _, l in ipairs(lbls) do l.TextColor3 = rc end
         end)
     else
-        local col = mutColors[info.mut] or Color3.new(1,1,1)
-        for _, l in ipairs(lbls) do l.TextColor3 = col end
+        if flingConn then flingConn:Disconnect(); flingConn = nil end
     end
 end
 
-local function getPodiums()
-    local res = {}
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return res end
-    for _, plot in pairs(plots:GetChildren()) do
-        local ap = plot:FindFirstChild("AnimalPodiums")
-        if ap then
-            for _, pod in pairs(ap:GetChildren()) do
-                local b = pod:FindFirstChild("Base")
-                if b and b:FindFirstChild("Spawn") then
-                    local att = b.Spawn:FindFirstChild("Attachment")
-                    if att and att:FindFirstChild("AnimalOverhead") then
-                        table.insert(res, att.AnimalOverhead)
-                    end
-                end
+-- ====== МЕНЮ (ИДЕАЛЬНОЕ) ======
+local screenGui, mainFrame, openBtn = nil, nil, nil
+
+local function createMenu()
+    pcall(function()
+        if CoreGui:FindFirstChild("WezexHub") then CoreGui.WezexHub:Destroy() end
+    end)
+
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "WezexHub"
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Enabled = true
+
+    openBtn = Instance.new("TextButton")
+    openBtn.Size = UDim2.new(0, 50, 0, 50)
+    openBtn.Position = UDim2.new(0.02, 0, 0.04, 0)
+    openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
+    openBtn.BackgroundTransparency = 0.15
+    openBtn.Text = "W"
+    openBtn.TextSize = 24
+    openBtn.TextColor3 = Color3.fromRGB(200, 150, 255)
+    openBtn.Font = Enum.Font.GothamBold
+    openBtn.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
+    openBtn.Visible = false
+
+    openBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        openBtn.Visible = false
+    end)
+
+    mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 240, 0, 340)
+    mainFrame.Position = UDim2.new(0.5, -120, 0.5, -170)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 22)
+    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.Parent = screenGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 14)
+    mainFrame.ClipsDescendants = true
+    mainFrame.Visible = true
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 4)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 18
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Wezex Hub"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = mainFrame
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -30, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 30, 70)
+    closeBtn.Text = "✕"
+    closeBtn.TextSize = 14
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Parent = mainFrame
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        openBtn.Visible = true
+    end)
+
+    local content = Instance.new("ScrollingFrame")
+    content.Size = UDim2.new(1, -14, 1, -48)
+    content.Position = UDim2.new(0, 7, 0, 40)
+    content.BackgroundTransparency = 1
+    content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    content.ScrollBarThickness = 4
+    content.Parent = mainFrame
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = content
+
+    local function createToggle(label, stateKey, onFunc, offFunc)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 30)
+        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+        frame.BackgroundTransparency = 0.4
+        frame.Parent = content
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.55, 0, 1, 0)
+        lbl.Position = UDim2.new(0.04, 0, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 12
+        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
+        lbl.Text = label
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = frame
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 48, 0, 20)
+        btn.Position = UDim2.new(1, -54, 0.5, -10)
+        btn.BorderSizePixel = 0
+        btn.TextSize = 10
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = frame
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+
+        local function updateButton()
+            if State[stateKey] then
+                btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+                btn.Text = "ON"
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                btn.Text = "OFF"
             end
         end
-    end
-    return res
-end
+        updateButton()
 
-local function startHV()
-    hvOn = true
-    State.hvEsp = true
-    task.spawn(function()
-        while hvOn do
-            local bestOH, bestVal, bestInfo, bestBase = nil, -math.huge, nil, nil
-            for _, oh in pairs(getPodiums()) do
-                local b2 = oh.Parent.Parent.Parent
-                if b2 and (b2:IsA("BasePart") or b2:IsA("Model")) then
-                    local gl = oh:FindFirstChild("Generation")
-                    if gl then
-                        local v = parseNum(gl.Text)
-                        if v > bestVal then
-                            bestVal = v
-                            bestOH = oh
-                            bestBase = b2
-                            local mutLbl = oh:FindFirstChild("Mutation")
-                            local mutTxt = getMut(mutLbl)
-                            bestInfo = {
-                                name = oh:FindFirstChild("DisplayName") and oh.DisplayName.Text or "?",
-                                gen = gl.Text,
-                                mut = mutTxt,
-                                rar = oh:FindFirstChild("Rarity") and oh.Rarity.Text or "?"
-                            }
-                        end
+        btn.MouseButton1Click:Connect(function()
+            if State[stateKey] then
+                if offFunc then offFunc() end
+            else
+                if onFunc then onFunc() end
+            end
+            updateButton()
+        end)
+    end
+
+    local function createSlider(label, stateKey, min, max, step)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 40)
+        frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
+        frame.BackgroundTransparency = 0.4
+        frame.Parent = content
+        Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.5, 0, 1, 0)
+        lbl.Position = UDim2.new(0.04, 0, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 12
+        lbl.TextColor3 = Color3.fromRGB(220, 210, 255)
+        lbl.Text = label
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = frame
+
+        local val = Instance.new("TextLabel")
+        val.Size = UDim2.new(0.2, 0, 1, 0)
+        val.Position = UDim2.new(0.76, 0, 0, 0)
+        val.BackgroundTransparency = 1
+        val.Font = Enum.Font.GothamBold
+        val.TextSize = 12
+        val.TextColor3 = Color3.fromRGB(255, 255, 255)
+        val.Text = tostring(State[stateKey])
+        val.TextXAlignment = Enum.TextXAlignment.Right
+        val.Parent = frame
+
+        local slider = Instance.new("Frame")
+        slider.Size = UDim2.new(0.6, 0, 0, 6)
+        slider.Position = UDim2.new(0.04, 0, 0.7, 0)
+        slider.BackgroundColor3 = Color3.fromRGB(50, 40, 70)
+        slider.Parent = frame
+        Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((State[stateKey] - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+        fill.BorderSizePixel = 0
+        fill.Parent = slider
+        Instance.new("UICorner").CornerRadius = UDim.new(1, 0)
+
+        local dragging = false
+        local sliderBtn = Instance.new("TextButton")
+        sliderBtn.Size = UDim2.new(1, 0, 1, 0)
+        sliderBtn.BackgroundTransparency = 1
+        sliderBtn.Text = ""
+        sliderBtn.Parent = slider
+
+        sliderBtn.MouseButton1Down:Connect(function() dragging = true end)
+        UIS.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        end)
+        UIS.InputChanged:Connect(function(i)
+            if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                local pos = math.clamp((i.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+                local v = min + (max - min) * pos
+                v = math.round(v / step) * step
+                State[stateKey] = v
+                fill.Size = UDim2.new((v - min) / (max - min), 0, 1, 0)
+                val.Text = tostring(v)
+                if stateKey == "wsSpeed" and wsOn then
+                    local c = LP.Character
+                    if c and c:FindFirstChild("Humanoid") then
+                        c.Humanoid.WalkSpeed = v
                     end
                 end
             end
-            if bestOH and bestBase then
-                if hvBase ~= bestBase then
-                    if hvGui and hvGui.Parent then hvGui:Destroy() end
-                    hvBase = bestBase
-                    makeBB(bestBase, bestOH, bestInfo)
-                    hvGui = bestBase:FindFirstChild("ZHV")
-                end
-    
+        end)
+    end
+
+    -- ====== ЭЛЕМЕНТЫ МЕНЮ ======
+    createToggle("Walkspeed", "ws", startWS, stopWS)
+    createSlider("Speed", "wsSpeed", 50, 120, 1)
+
+    createToggle("Infinite Jump", "ij", startIJ, stopIJ)
+    createToggle("Boost Jump", "bj", startBJ, stopBJ)
+    createSlider("Boost Str", "bjStrength", 50, 300, 5)
+
+    createToggle("Laser Aimbot", "laser", startLaser, stopLaser)
+    createToggle("ESP", "esp", startESP, stopESP)
+    createToggle("Touch Fling", "fling", toggleFling, toggleFling)
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+    end)
+
+    UIS.InputBegan:Connect(function(i)
+        if i.KeyCode == Enum.KeyCode.RightBracket then
+            if mainFrame.Visible then
+                mainFrame.Visible = false
+                openBtn.Visible = true
+            else
+                mainFrame.Visible = true
+                openBtn.Visible = false
+            end
+        end
+    end)
+
+    mainFrame.Visible = true
+    openBtn.Visible = false
+end
+
+createMenu()
