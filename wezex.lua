@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (MOVEMENT EXPANSION)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FULL)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -7,7 +7,6 @@ local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = workspace
-local Lighting = game:GetService("Lighting")
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -57,6 +56,7 @@ local function toggleInfJump()
             infJumpConnection = nil
         end
     end
+    updateQuickButtons()
 end
 
 -- ====== ANTI-DEATH PLATFORM ======
@@ -91,6 +91,7 @@ local function startPlatform()
         if not root then return end
         platformPart.Position = Vector3.new(root.Position.X, root.Position.Y - 1.5, root.Position.Z)
     end)
+    updateQuickButtons()
 end
 
 local function stopPlatform()
@@ -103,6 +104,7 @@ local function stopPlatform()
         platformPart:Destroy()
         platformPart = nil
     end
+    updateQuickButtons()
 end
 
 local function togglePlatform()
@@ -121,7 +123,6 @@ local function startFloat()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- Сохраняем позицию, где зависли
     local frozenPos = hrp.Position
 
     floatConnection = RunService.RenderStepped:Connect(function()
@@ -130,10 +131,10 @@ local function startFloat()
         if not c then return end
         local root = c:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        -- Замораживаем в воздухе
         root.Velocity = Vector3.new(0, 0, 0)
         root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
     end)
+    updateQuickButtons()
 end
 
 local function stopFloat()
@@ -142,6 +143,7 @@ local function stopFloat()
         floatConnection:Disconnect()
         floatConnection = nil
     end
+    updateQuickButtons()
 end
 
 local function toggleFloat()
@@ -152,20 +154,21 @@ local function toggleFloat()
     end
 end
 
--- ====== БЫСТРЫЕ КНОПКИ (QUICK TOGGLES) ======
+-- ====== БЫСТРЫЕ КНОПКИ ======
 local function createQuickButton(label, stateKey, toggleFunc)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 80, 0, 30)
-    btn.Position = UDim2.new(0.85, 0, 0.1 + #quickButtons * 0.06, 0)
+    btn.Size = UDim2.new(0, 90, 0, 28)
+    btn.Position = UDim2.new(0.82, 0, 0.1 + #quickButtons * 0.055, 0)
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
     btn.BackgroundTransparency = 0.2
     btn.Text = label .. ": OFF"
-    btn.TextSize = 11
+    btn.TextSize = 10
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
     btn.Parent = CoreGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
     btn.Visible = false
+    btn.ZIndex = 999
 
     btn.MouseButton1Click:Connect(function()
         toggleFunc()
@@ -194,7 +197,7 @@ local function updateQuickButtons()
     end
 end
 
--- ====== ОКНО КЛЮЧА ======
+-- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -301,37 +304,21 @@ function createMainUI()
         },
     })
 
-    -- ВКЛАДКА COMBAT (ПУСТАЯ)
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Combat Settings",
-    })
-    CombatSection:Label({
-        Title = "Нет доступных функций",
-        Desc = "Ожидайте обновления",
-    })
+    -- COMBAT (ПУСТАЯ)
+    local CombatTab = Window:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
+    local CombatSection = CombatTab:Section({ Title = "⚔️ Combat Settings" })
+    CombatSection:Label({ Title = "Нет доступных функций", Desc = "Ожидайте обновления" })
 
-    -- ВКЛАДКА MOVEMENT
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
+    -- MOVEMENT
+    local MovementTab = Window:Tab({ Title = "Movement", Icon = "solar:running-bold" })
+    local MovementSection = MovementTab:Section({ Title = "🏃 Movement Settings" })
 
     MovementSection:Toggle({
         Title = "Infinite Jump",
         Desc = "Бесконечные прыжки",
         Value = State.infJump,
         Callback = function(v)
-            if v ~= State.infJump then
-                toggleInfJump()
-                updateQuickButtons()
-            end
+            if v ~= State.infJump then toggleInfJump() end
         end,
     })
 
@@ -340,10 +327,7 @@ function createMainUI()
         Desc = "Платформа под ногами",
         Value = State.platform,
         Callback = function(v)
-            if v ~= State.platform then
-                togglePlatform()
-                updateQuickButtons()
-            end
+            if v ~= State.platform then togglePlatform() end
         end,
     })
 
@@ -352,40 +336,22 @@ function createMainUI()
         Desc = "Застыть в воздухе",
         Value = State.float,
         Callback = function(v)
-            if v ~= State.float then
-                toggleFloat()
-                updateQuickButtons()
-            end
+            if v ~= State.float then toggleFloat() end
         end,
     })
 
-    -- ВКЛАДКА VISUALS (ПУСТАЯ)
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
-    })
-    VisualsSection:Label({
-        Title = "Нет доступных функций",
-        Desc = "Ожидайте обновления",
-    })
+    -- VISUALS (ПУСТАЯ)
+    local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
+    local VisualsSection = VisualsTab:Section({ Title = "👁️ Visual Settings" })
+    VisualsSection:Label({ Title = "Нет доступных функций", Desc = "Ожидайте обновления" })
 
-    -- ВКЛАДКА ABOUT
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
-    })
+    -- ABOUT
+    local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-square-bold" })
+    local AboutSection = AboutTab:Section({ Title = "Wezex Hub v4.1" })
     AboutSection:Button({
         Title = "Destroy Window",
         Color = Color3.fromRGB(255, 50, 50),
-        Callback = function()
-            Window:Destroy()
-        end,
+        Callback = function() Window:Destroy() end,
     })
 
     -- БЫСТРЫЕ КНОПКИ
