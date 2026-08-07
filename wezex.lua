@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL FIXED)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WITH GUI BINDS)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -35,7 +35,7 @@ local State = {
     infJump = false,
     platform = false,
     esp = false,
-    airStick = false,
+    float = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
@@ -43,9 +43,51 @@ local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
 local platformConnection = nil
 local platformPart = nil
-local airStickConn = nil
+local floatConnection = nil
+local bindButtons = {}
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, airStickOn = false, false, false, false, false, false
+-- ====== GUI-БИНДЫ (ЭКРАННЫЕ КНОПКИ) ======
+local function createBindButton(label, stateKey, toggleFunc)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 90, 0, 30)
+    btn.Position = UDim2.new(0.85, 0, 0.1 + #bindButtons * 0.055, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    btn.BackgroundTransparency = 0.2
+    btn.Text = label .. ": OFF"
+    btn.TextSize = 11
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = CoreGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+    btn.Visible = false
+    btn.ZIndex = 999
+
+    btn.MouseButton1Click:Connect(function()
+        toggleFunc()
+        if State[stateKey] then
+            btn.Text = label .. ": ON"
+            btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+        else
+            btn.Text = label .. ": OFF"
+            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        end
+    end)
+
+    table.insert(bindButtons, {btn = btn, stateKey = stateKey, label = label})
+    return btn
+end
+
+local function updateBindButtons()
+    for _, data in ipairs(bindButtons) do
+        if State[data.stateKey] then
+            data.btn.Visible = true
+            data.btn.Text = data.label .. ": ON"
+            data.btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+        else
+            data.btn.Visible = false
+        end
+    end
+end
 
 -- ====== ФУНКЦИИ ======
 
@@ -140,13 +182,13 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM (УМЕНЬШЕННАЯ, ФИКСИРОВАННАЯ ВЫСОТА)
+-- 4. ANTI-DEATH PLATFORM (ФИКС ВЫСОТЫ)
 local function startPlatform()
     platformOn = true
     State.platform = true
 
     platformPart = Instance.new("Part")
-    platformPart.Size = Vector3.new(6, 1, 6) -- УМЕНЬШИЛИ
+    platformPart.Size = Vector3.new(6, 1, 6)
     platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
     platformPart.Anchored = true
     platformPart.CanCollide = true
@@ -168,19 +210,9 @@ local function startPlatform()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
 
-        -- Фиксированная высота: 1.5 блока под игроком
+        -- ФИКСИРОВАННАЯ ВЫСОТА: 1.5 блока под игроком
         local targetY = hrp.Position.Y - 1.5
-        local currentY = platformPart.Position.Y
-
-        -- Плавно поднимаемся к цели, но не выше
-        if currentY < targetY then
-            platformPart.Position = platformPart.Position + Vector3.new(0, math.min(0.3, targetY - currentY), 0)
-        elseif currentY > targetY then
-            platformPart.Position = platformPart.Position - Vector3.new(0, math.min(0.3, currentY - targetY), 0)
-        end
-
-        -- Следуем за игроком по X и Z
-        platformPart.Position = Vector3.new(hrp.Position.X, platformPart.Position.Y, hrp.Position.Z)
+        platformPart.Position = Vector3.new(hrp.Position.X, targetY, hrp.Position.Z)
     end)
 
     task.spawn(function()
@@ -212,7 +244,40 @@ local function stopPlatform()
     end
 end
 
--- 5. ESP (ОБХОД НЕВИДИМОСТИ)
+-- 5. FLOAT (ЗАВИСАНИЕ В ВОЗДУХЕ)
+local function startFloat()
+    floatOn = true
+    State.float = true
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local frozenPos = hrp.Position
+
+    floatConnection = RunService.RenderStepped:Connect(function()
+        if not floatOn then return end
+        local c = LocalPlayer.Character
+        if not c then return end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        -- Замораживаем в воздухе
+        root.Velocity = Vector3.new(0, 0, 0)
+        root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
+    end)
+end
+
+local function stopFloat()
+    floatOn = false
+    State.float = false
+    if floatConnection then
+        floatConnection:Disconnect()
+        floatConnection = nil
+    end
+end
+
+-- 6. ESP (ОБХОД НЕВИДИМОСТИ)
 local function startESP()
     espOn = true
     State.esp = true
@@ -250,46 +315,6 @@ local function stopESP()
     State.esp = false
     for _, obj in ipairs(espHLs) do if obj and obj.Parent then obj:Destroy() end end
     espHLs = {}
-end
-
--- 6. AIR STICK (КОНТРОЛЬ В ВОЗДУХЕ)
-local function startAirStick()
-    airStickOn = true
-    State.airStick = true
-
-    airStickConn = RunService.Heartbeat:Connect(function()
-        if not airStickOn then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        local hum = char:FindFirstChild("Humanoid")
-        if not hum then return end
-
-        -- Если игрок в воздухе и двигается
-        if hum:GetState() == Enum.HumanoidStateType.Freefall or hum:GetState() == Enum.HumanoidStateType.Jumping then
-            local moveDir = hum.MoveDirection
-            if moveDir.Magnitude > 0 then
-                -- Добавляем контроль в воздухе (аналог Air Stick)
-                local velocity = hrp.Velocity
-                local newVel = Vector3.new(
-                    math.lerp(velocity.X, moveDir.X * 30, 0.1),
-                    velocity.Y,
-                    math.lerp(velocity.Z, moveDir.Z * 30, 0.1)
-                )
-                hrp.Velocity = newVel
-            end
-        end
-    end)
-end
-
-local function stopAirStick()
-    airStickOn = false
-    State.airStick = false
-    if airStickConn then
-        airStickConn:Disconnect()
-        airStickConn = nil
-    end
 end
 
 -- ====== ОКНО КЛЮЧА ======
@@ -414,6 +439,7 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.laser then
                 if v then startLaser() else stopLaser() end
+                updateBindButtons()
             end
         end,
     })
@@ -424,6 +450,7 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.fling then
                 toggleFling()
+                updateBindButtons()
             end
         end,
     })
@@ -443,26 +470,29 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.infJump then
                 if v then startInfJump() else stopInfJump() end
+                updateBindButtons()
             end
         end,
     })
     MovementSection:Toggle({
         Title = "Anti-Death Platform",
-        Desc = "Платформа под ногами (уменьшена, фикс высота)",
+        Desc = "Платформа под ногами (экранная кнопка)",
         Value = State.platform,
         Callback = function(v)
             if v ~= State.platform then
                 if v then startPlatform() else stopPlatform() end
+                updateBindButtons()
             end
         end,
     })
     MovementSection:Toggle({
-        Title = "Air Stick",
-        Desc = "Контроль движения в воздухе",
-        Value = State.airStick,
+        Title = "Float",
+        Desc = "Зависание в воздухе (экранная кнопка)",
+        Value = State.float,
         Callback = function(v)
-            if v ~= State.airStick then
-                if v then startAirStick() else stopAirStick() end
+            if v ~= State.float then
+                if v then startFloat() else stopFloat() end
+                updateBindButtons()
             end
         end,
     })
@@ -482,6 +512,7 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.esp then
                 if v then startESP() else stopESP() end
+                updateBindButtons()
             end
         end,
     })
@@ -502,13 +533,33 @@ function createMainUI()
         end,
     })
 
+    -- СОЗДАНИЕ ЭКРАННЫХ КНОПОК-БИНДОВ
+    createBindButton("Float", "float", function()
+        if State.float then
+            stopFloat()
+        else
+            startFloat()
+        end
+        updateBindButtons()
+    end)
+
+    createBindButton("Platform", "platform", function()
+        if State.platform then
+            stopPlatform()
+        else
+            startPlatform()
+        end
+        updateBindButtons()
+    end)
+
     -- Синхронизация
     if State.laser then startLaser() end
     if State.fling then toggleFling() end
     if State.infJump then startInfJump() end
     if State.platform then startPlatform() end
     if State.esp then startESP() end
-    if State.airStick then startAirStick() end
+    if State.float then startFloat() end
+    updateBindButtons()
 end
 
 -- ====== ЗАПУСК ======
