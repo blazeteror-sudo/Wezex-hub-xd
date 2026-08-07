@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FULL)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (EXACT REQUEST)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -37,7 +37,6 @@ local infJumpConnection = nil
 local platformConnection = nil
 local platformPart = nil
 local floatConnection = nil
-local quickButtons = {}
 
 -- ====== INFINITE JUMP ======
 local function toggleInfJump()
@@ -56,7 +55,6 @@ local function toggleInfJump()
             infJumpConnection = nil
         end
     end
-    updateQuickButtons()
 end
 
 -- ====== ANTI-DEATH PLATFORM ======
@@ -77,12 +75,6 @@ local function startPlatform()
     platformPart.Color = Color3.fromRGB(0, 255, 255)
     platformPart.Parent = Workspace
 
-    local light = Instance.new("PointLight")
-    light.Parent = platformPart
-    light.Color = Color3.fromRGB(0, 255, 255)
-    light.Range = 15
-    light.Brightness = 2
-
     platformConnection = RunService.RenderStepped:Connect(function()
         if not State.platform then return end
         local c = LocalPlayer.Character
@@ -91,7 +83,6 @@ local function startPlatform()
         if not root then return end
         platformPart.Position = Vector3.new(root.Position.X, root.Position.Y - 1.5, root.Position.Z)
     end)
-    updateQuickButtons()
 end
 
 local function stopPlatform()
@@ -104,7 +95,6 @@ local function stopPlatform()
         platformPart:Destroy()
         platformPart = nil
     end
-    updateQuickButtons()
 end
 
 local function togglePlatform()
@@ -134,7 +124,6 @@ local function startFloat()
         root.Velocity = Vector3.new(0, 0, 0)
         root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
     end)
-    updateQuickButtons()
 end
 
 local function stopFloat()
@@ -143,7 +132,6 @@ local function stopFloat()
         floatConnection:Disconnect()
         floatConnection = nil
     end
-    updateQuickButtons()
 end
 
 local function toggleFloat()
@@ -151,49 +139,6 @@ local function toggleFloat()
         stopFloat()
     else
         startFloat()
-    end
-end
-
--- ====== БЫСТРЫЕ КНОПКИ ======
-local function createQuickButton(label, stateKey, toggleFunc)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 90, 0, 28)
-    btn.Position = UDim2.new(0.82, 0, 0.1 + #quickButtons * 0.055, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    btn.BackgroundTransparency = 0.2
-    btn.Text = label .. ": OFF"
-    btn.TextSize = 10
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = CoreGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
-    btn.Visible = false
-    btn.ZIndex = 999
-
-    btn.MouseButton1Click:Connect(function()
-        toggleFunc()
-        if State[stateKey] then
-            btn.Text = label .. ": ON"
-            btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-        else
-            btn.Text = label .. ": OFF"
-            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        end
-    end)
-
-    table.insert(quickButtons, {btn = btn, stateKey = stateKey, label = label})
-    return btn
-end
-
-local function updateQuickButtons()
-    for _, data in ipairs(quickButtons) do
-        if State[data.stateKey] then
-            data.btn.Visible = true
-            data.btn.Text = data.label .. ": ON"
-            data.btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-        else
-            data.btn.Visible = false
-        end
     end
 end
 
@@ -304,65 +249,91 @@ function createMainUI()
         },
     })
 
-    -- COMBAT (ПУСТАЯ)
-    local CombatTab = Window:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
-    local CombatSection = CombatTab:Section({ Title = "⚔️ Combat Settings" })
-    CombatSection:Label({ Title = "Нет доступных функций", Desc = "Ожидайте обновления" })
+    -- ВКЛАДКА COMBAT (ПУСТАЯ)
+    local CombatTab = Window:Tab({
+        Title = "Combat",
+        Icon = "solar:sword-bold",
+    })
+    local CombatSection = CombatTab:Section({
+        Title = "⚔️ Combat Settings",
+    })
+    CombatSection:Label({
+        Title = "Нет доступных функций",
+        Desc = "Ожидайте обновления",
+    })
 
-    -- MOVEMENT
-    local MovementTab = Window:Tab({ Title = "Movement", Icon = "solar:running-bold" })
-    local MovementSection = MovementTab:Section({ Title = "🏃 Movement Settings" })
-
+    -- ВКЛАДКА MOVEMENT
+    local MovementTab = Window:Tab({
+        Title = "Movement",
+        Icon = "solar:running-bold",
+    })
+    local MovementSection = MovementTab:Section({
+        Title = "🏃 Movement Settings",
+    })
     MovementSection:Toggle({
         Title = "Infinite Jump",
         Desc = "Бесконечные прыжки",
         Value = State.infJump,
         Callback = function(v)
-            if v ~= State.infJump then toggleInfJump() end
+            if v ~= State.infJump then
+                toggleInfJump()
+            end
         end,
     })
-
     MovementSection:Toggle({
         Title = "Anti-Death Platform",
         Desc = "Платформа под ногами",
         Value = State.platform,
         Callback = function(v)
-            if v ~= State.platform then togglePlatform() end
+            if v ~= State.platform then
+                togglePlatform()
+            end
         end,
     })
-
     MovementSection:Toggle({
         Title = "Float / Freeze",
         Desc = "Застыть в воздухе",
         Value = State.float,
         Callback = function(v)
-            if v ~= State.float then toggleFloat() end
+            if v ~= State.float then
+                toggleFloat()
+            end
         end,
     })
 
-    -- VISUALS (ПУСТАЯ)
-    local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
-    local VisualsSection = VisualsTab:Section({ Title = "👁️ Visual Settings" })
-    VisualsSection:Label({ Title = "Нет доступных функций", Desc = "Ожидайте обновления" })
+    -- ВКЛАДКА VISUALS (ПУСТАЯ)
+    local VisualsTab = Window:Tab({
+        Title = "Visuals",
+        Icon = "solar:eye-bold",
+    })
+    local VisualsSection = VisualsTab:Section({
+        Title = "👁️ Visual Settings",
+    })
+    VisualsSection:Label({
+        Title = "Нет доступных функций",
+        Desc = "Ожидайте обновления",
+    })
 
-    -- ABOUT
-    local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-square-bold" })
-    local AboutSection = AboutTab:Section({ Title = "Wezex Hub v4.1" })
+    -- ВКЛАДКА ABOUT
+    local AboutTab = Window:Tab({
+        Title = "About",
+        Icon = "solar:info-square-bold",
+    })
+    local AboutSection = AboutTab:Section({
+        Title = "Wezex Hub v4.1",
+    })
     AboutSection:Button({
         Title = "Destroy Window",
         Color = Color3.fromRGB(255, 50, 50),
-        Callback = function() Window:Destroy() end,
+        Callback = function()
+            Window:Destroy()
+        end,
     })
-
-    -- БЫСТРЫЕ КНОПКИ
-    createQuickButton("Platform", "platform", togglePlatform)
-    createQuickButton("Float", "float", toggleFloat)
 
     -- Синхронизация
     if State.infJump then toggleInfJump() end
     if State.platform then startPlatform() end
     if State.float then startFloat() end
-    updateQuickButtons()
 end
 
 -- ====== ЗАПУСК ======
