@@ -37,7 +37,6 @@ local State = {
     esp = false,
     night = false,
     orbs = false,
-    float = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
@@ -46,9 +45,8 @@ local espHLs = {}
 local orbConnections = {}
 local platformConnection = nil
 local platformPart = nil
-local floatConnection = nil
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn, floatOn = false, false, false, false, false, false, false, false
+local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn = false, false, false, false, false, false, false
 
 -- ====== ORB ПЕРЕМЕННЫЕ ======
 local orbs = {}
@@ -210,38 +208,7 @@ local function stopPlatform()
     end
 end
 
--- 5. FLOAT / FREEZE
-local function startFloat()
-    floatOn = true
-    State.float = true
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local frozenPos = hrp.Position
-
-    floatConnection = RunService.RenderStepped:Connect(function()
-        if not floatOn then return end
-        local c = LocalPlayer.Character
-        if not c then return end
-        local root = c:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        root.Velocity = Vector3.new(0, 0, 0)
-        root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
-    end)
-end
-
-local function stopFloat()
-    floatOn = false
-    State.float = false
-    if floatConnection then
-        floatConnection:Disconnect()
-        floatConnection = nil
-    end
-end
-
--- 6. ESP (ОБХОД НЕВИДИМОСТИ)
+-- 5. ESP (ОБХОД НЕВИДИМОСТИ)
 local function startESP()
     espOn = true
     State.esp = true
@@ -281,7 +248,7 @@ local function stopESP()
     espHLs = {}
 end
 
--- 7. НОЧЬ
+-- 6. НОЧЬ
 local function toggleNight()
     nightOn = not nightOn
     State.night = nightOn
@@ -296,7 +263,7 @@ local function toggleNight()
     end
 end
 
--- 8. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ, БЕЗ РАЗМЫТИЯ)
+-- 7. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ, БЕЗ РАЗМЫТИЯ)
 local function createOrb(parent, color, offset)
     local orb = Instance.new("Part")
     orb.Size = Vector3.new(1, 1, 1)
@@ -512,7 +479,7 @@ function createMainUI()
         end,
     })
 
-    -- ====== ВКЛАДКА MOVEMENT (ЗАМЕНЕНА) ======
+    -- ВКЛАДКА MOVEMENT
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
@@ -537,16 +504,6 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.platform then
                 if v then startPlatform() else stopPlatform() end
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Float / Freeze",
-        Desc = "Застыть в воздухе",
-        Value = State.float,
-        Callback = function(v)
-            if v ~= State.float then
-                if v then startFloat() else stopFloat() end
             end
         end,
     })
@@ -614,8 +571,7 @@ function createMainUI()
     if State.esp then startESP() end
     if State.night then toggleNight() end
     if State.orbs then startOrbs() end
-    if State.float then startFloat() end
 end
 
 -- ====== ЗАПУСК ======
-showNativeKeyWi
+showNativeKeyWindow()
