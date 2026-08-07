@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (ONLY INFJUMP)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (MOVEMENT EXPANSION)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -6,6 +6,8 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Workspace = workspace
+local Lighting = game:GetService("Lighting")
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -27,11 +29,18 @@ local keyVerified = false
 -- ====== СОСТОЯНИЯ ======
 local State = {
     infJump = false,
+    platform = false,
+    float = false,
 }
 
--- ====== INFINITE JUMP ======
+-- ====== ПОДКЛЮЧЕНИЯ ======
 local infJumpConnection = nil
+local platformConnection = nil
+local platformPart = nil
+local floatConnection = nil
+local quickButtons = {}
 
+-- ====== INFINITE JUMP ======
 local function toggleInfJump()
     State.infJump = not State.infJump
     if State.infJump then
@@ -50,7 +59,142 @@ local function toggleInfJump()
     end
 end
 
--- ====== КЛЮЧ-СИСТЕМА ======
+-- ====== ANTI-DEATH PLATFORM ======
+local function startPlatform()
+    State.platform = true
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    platformPart = Instance.new("Part")
+    platformPart.Size = Vector3.new(8, 1, 8)
+    platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
+    platformPart.Anchored = true
+    platformPart.CanCollide = true
+    platformPart.Transparency = 0.4
+    platformPart.Material = Enum.Material.Neon
+    platformPart.Color = Color3.fromRGB(0, 255, 255)
+    platformPart.Parent = Workspace
+
+    local light = Instance.new("PointLight")
+    light.Parent = platformPart
+    light.Color = Color3.fromRGB(0, 255, 255)
+    light.Range = 15
+    light.Brightness = 2
+
+    platformConnection = RunService.RenderStepped:Connect(function()
+        if not State.platform then return end
+        local c = LocalPlayer.Character
+        if not c then return end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        platformPart.Position = Vector3.new(root.Position.X, root.Position.Y - 1.5, root.Position.Z)
+    end)
+end
+
+local function stopPlatform()
+    State.platform = false
+    if platformConnection then
+        platformConnection:Disconnect()
+        platformConnection = nil
+    end
+    if platformPart then
+        platformPart:Destroy()
+        platformPart = nil
+    end
+end
+
+local function togglePlatform()
+    if State.platform then
+        stopPlatform()
+    else
+        startPlatform()
+    end
+end
+
+-- ====== FLOAT / FREEZE ======
+local function startFloat()
+    State.float = true
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- Сохраняем позицию, где зависли
+    local frozenPos = hrp.Position
+
+    floatConnection = RunService.RenderStepped:Connect(function()
+        if not State.float then return end
+        local c = LocalPlayer.Character
+        if not c then return end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        -- Замораживаем в воздухе
+        root.Velocity = Vector3.new(0, 0, 0)
+        root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
+    end)
+end
+
+local function stopFloat()
+    State.float = false
+    if floatConnection then
+        floatConnection:Disconnect()
+        floatConnection = nil
+    end
+end
+
+local function toggleFloat()
+    if State.float then
+        stopFloat()
+    else
+        startFloat()
+    end
+end
+
+-- ====== БЫСТРЫЕ КНОПКИ (QUICK TOGGLES) ======
+local function createQuickButton(label, stateKey, toggleFunc)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 80, 0, 30)
+    btn.Position = UDim2.new(0.85, 0, 0.1 + #quickButtons * 0.06, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    btn.BackgroundTransparency = 0.2
+    btn.Text = label .. ": OFF"
+    btn.TextSize = 11
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = CoreGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+    btn.Visible = false
+
+    btn.MouseButton1Click:Connect(function()
+        toggleFunc()
+        if State[stateKey] then
+            btn.Text = label .. ": ON"
+            btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+        else
+            btn.Text = label .. ": OFF"
+            btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        end
+    end)
+
+    table.insert(quickButtons, {btn = btn, stateKey = stateKey, label = label})
+    return btn
+end
+
+local function updateQuickButtons()
+    for _, data in ipairs(quickButtons) do
+        if State[data.stateKey] then
+            data.btn.Visible = true
+            data.btn.Text = data.label .. ": ON"
+            data.btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
+        else
+            data.btn.Visible = false
+        end
+    end
+end
+
+-- ====== ОКНО КЛЮЧА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -170,7 +314,7 @@ function createMainUI()
         Desc = "Ожидайте обновления",
     })
 
-    -- ВКЛАДКА MOVEMENT (ТОЛЬКО INFINITE JUMP)
+    -- ВКЛАДКА MOVEMENT
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
@@ -178,6 +322,7 @@ function createMainUI()
     local MovementSection = MovementTab:Section({
         Title = "🏃 Movement Settings",
     })
+
     MovementSection:Toggle({
         Title = "Infinite Jump",
         Desc = "Бесконечные прыжки",
@@ -185,6 +330,31 @@ function createMainUI()
         Callback = function(v)
             if v ~= State.infJump then
                 toggleInfJump()
+                updateQuickButtons()
+            end
+        end,
+    })
+
+    MovementSection:Toggle({
+        Title = "Anti-Death Platform",
+        Desc = "Платформа под ногами",
+        Value = State.platform,
+        Callback = function(v)
+            if v ~= State.platform then
+                togglePlatform()
+                updateQuickButtons()
+            end
+        end,
+    })
+
+    MovementSection:Toggle({
+        Title = "Float / Freeze",
+        Desc = "Застыть в воздухе",
+        Value = State.float,
+        Callback = function(v)
+            if v ~= State.float then
+                toggleFloat()
+                updateQuickButtons()
             end
         end,
     })
@@ -218,8 +388,15 @@ function createMainUI()
         end,
     })
 
+    -- БЫСТРЫЕ КНОПКИ
+    createQuickButton("Platform", "platform", togglePlatform)
+    createQuickButton("Float", "float", toggleFloat)
+
     -- Синхронизация
     if State.infJump then toggleInfJump() end
+    if State.platform then startPlatform() end
+    if State.float then startFloat() end
+    updateQuickButtons()
 end
 
 -- ====== ЗАПУСК ======
