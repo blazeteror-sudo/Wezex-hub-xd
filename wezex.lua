@@ -1,4 +1,4 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL)
+-- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL FIXED)
 -- КЛЮЧ: 38399923
 
 local CoreGui = game:GetService("CoreGui")
@@ -35,22 +35,17 @@ local State = {
     infJump = false,
     platform = false,
     esp = false,
-    night = false,
-    orbs = false,
+    airStick = false,
 }
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
 local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
-local orbConnections = {}
 local platformConnection = nil
 local platformPart = nil
+local airStickConn = nil
 
-local laserOn, flingOn, infJumpOn, platformOn, espOn, nightOn, orbsOn = false, false, false, false, false, false, false
-
--- ====== ORB ПЕРЕМЕННЫЕ ======
-local orbs = {}
-local orbLights = {}
+local laserOn, flingOn, infJumpOn, platformOn, espOn, airStickOn = false, false, false, false, false, false
 
 -- ====== ФУНКЦИИ ======
 
@@ -145,17 +140,17 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM
+-- 4. ANTI-DEATH PLATFORM (УМЕНЬШЕННАЯ, ФИКСИРОВАННАЯ ВЫСОТА)
 local function startPlatform()
     platformOn = true
     State.platform = true
 
     platformPart = Instance.new("Part")
-    platformPart.Size = Vector3.new(10, 1, 10)
-    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
+    platformPart.Size = Vector3.new(6, 1, 6) -- УМЕНЬШИЛИ
+    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
     platformPart.Anchored = true
     platformPart.CanCollide = true
-    platformPart.Transparency = 0.5
+    platformPart.Transparency = 0.4
     platformPart.Material = Enum.Material.Neon
     platformPart.Color = Color3.fromRGB(0, 255, 255)
     platformPart.Parent = Workspace
@@ -163,7 +158,7 @@ local function startPlatform()
     local light = Instance.new("PointLight")
     light.Parent = platformPart
     light.Color = Color3.fromRGB(0, 255, 255)
-    light.Range = 15
+    light.Range = 12
     light.Brightness = 2
 
     platformConnection = RunService.RenderStepped:Connect(function()
@@ -172,11 +167,20 @@ local function startPlatform()
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        platformPart.Position = hrp.Position - Vector3.new(0, 3, 0)
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
-            platformPart.Position = hrp.Position - Vector3.new(0, 2, 0)
+
+        -- Фиксированная высота: 1.5 блока под игроком
+        local targetY = hrp.Position.Y - 1.5
+        local currentY = platformPart.Position.Y
+
+        -- Плавно поднимаемся к цели, но не выше
+        if currentY < targetY then
+            platformPart.Position = platformPart.Position + Vector3.new(0, math.min(0.3, targetY - currentY), 0)
+        elseif currentY > targetY then
+            platformPart.Position = platformPart.Position - Vector3.new(0, math.min(0.3, currentY - targetY), 0)
         end
+
+        -- Следуем за игроком по X и Z
+        platformPart.Position = Vector3.new(hrp.Position.X, platformPart.Position.Y, hrp.Position.Z)
     end)
 
     task.spawn(function()
@@ -248,99 +252,44 @@ local function stopESP()
     espHLs = {}
 end
 
--- 6. НОЧЬ
-local function toggleNight()
-    nightOn = not nightOn
-    State.night = nightOn
-    if nightOn then
-        Lighting.Ambient = Color3.fromRGB(10, 10, 20)
-        Lighting.Brightness = 0.2
-        Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 20)
-    else
-        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        Lighting.Brightness = 1
-        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+-- 6. AIR STICK (КОНТРОЛЬ В ВОЗДУХЕ)
+local function startAirStick()
+    airStickOn = true
+    State.airStick = true
+
+    airStickConn = RunService.Heartbeat:Connect(function()
+        if not airStickOn then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then return end
+
+        -- Если игрок в воздухе и двигается
+        if hum:GetState() == Enum.HumanoidStateType.Freefall or hum:GetState() == Enum.HumanoidStateType.Jumping then
+            local moveDir = hum.MoveDirection
+            if moveDir.Magnitude > 0 then
+                -- Добавляем контроль в воздухе (аналог Air Stick)
+                local velocity = hrp.Velocity
+                local newVel = Vector3.new(
+                    math.lerp(velocity.X, moveDir.X * 30, 0.1),
+                    velocity.Y,
+                    math.lerp(velocity.Z, moveDir.Z * 30, 0.1)
+                )
+                hrp.Velocity = newVel
+            end
+        end
+    end)
+end
+
+local function stopAirStick()
+    airStickOn = false
+    State.airStick = false
+    if airStickConn then
+        airStickConn:Disconnect()
+        airStickConn = nil
     end
-end
-
--- 7. ORBS (СВЕТЯЩИЕСЯ ШАРЫ СО ШЛЕЙФОМ, БЕЗ РАЗМЫТИЯ)
-local function createOrb(parent, color, offset)
-    local orb = Instance.new("Part")
-    orb.Size = Vector3.new(1, 1, 1)
-    orb.Shape = Enum.PartType.Ball
-    orb.Material = Enum.Material.Neon
-    orb.Color = color
-    orb.Anchored = true
-    orb.CanCollide = false
-    orb.Parent = parent
-
-    -- Шлейф (Trail) для шарика
-    local trail = Instance.new("Trail")
-    trail.Parent = orb
-    trail.Attachment0 = Instance.new("Attachment", orb)
-    trail.Lifetime = 0.5
-    trail.MinLength = 0.2
-    trail.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, color),
-        ColorSequenceKeypoint.new(0.5, color),
-        ColorSequenceKeypoint.new(1, color)
-    })
-    trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.1),
-        NumberSequenceKeypoint.new(0.5, 0.3),
-        NumberSequenceKeypoint.new(1, 1)
-    })
-    trail.Width = NumberSequence.new(1.5)
-
-    -- Свет от шара
-    local light = Instance.new("PointLight")
-    light.Parent = orb
-    light.Color = color
-    light.Range = 18
-    light.Brightness = 2.5
-    table.insert(orbLights, light)
-
-    return orb
-end
-
-local function startOrbs()
-    orbsOn = true
-    State.orbs = true
-
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-
-    local colors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 0, 255), Color3.fromRGB(255, 255, 0)}
-    local offsets = {Vector3.new(3.5, 0, 0), Vector3.new(-3.5, 0, 0), Vector3.new(0, 0, 3.5)}
-
-    for i = 1, 3 do
-        local orb = createOrb(hrp, colors[i], offsets[i])
-        table.insert(orbs, orb)
-
-        local conn = RunService.RenderStepped:Connect(function()
-            if not orbsOn or not hrp.Parent then return end
-            local time = tick() * 1.2
-            local offset = Vector3.new(
-                math.sin(time + i * 2.09) * 4.5,
-                math.cos(time + i * 1.57) * 3.5 + 2.5,
-                math.cos(time + i * 1.05) * 4.5
-            )
-            orb.Position = hrp.Position + offset
-        end)
-        table.insert(orbConnections, conn)
-    end
-end
-
-local function stopOrbs()
-    orbsOn = false
-    State.orbs = false
-
-    for _, conn in ipairs(orbConnections) do conn:Disconnect() end
-    orbConnections = {}
-    for _, orb in ipairs(orbs) do orb:Destroy() end
-    orbs = {}
-    for _, light in ipairs(orbLights) do light:Destroy() end
-    orbLights = {}
 end
 
 -- ====== ОКНО КЛЮЧА ======
@@ -499,11 +448,21 @@ function createMainUI()
     })
     MovementSection:Toggle({
         Title = "Anti-Death Platform",
-        Desc = "Платформа под ногами, чтобы не убили",
+        Desc = "Платформа под ногами (уменьшена, фикс высота)",
         Value = State.platform,
         Callback = function(v)
             if v ~= State.platform then
                 if v then startPlatform() else stopPlatform() end
+            end
+        end,
+    })
+    MovementSection:Toggle({
+        Title = "Air Stick",
+        Desc = "Контроль движения в воздухе",
+        Value = State.airStick,
+        Callback = function(v)
+            if v ~= State.airStick then
+                if v then startAirStick() else stopAirStick() end
             end
         end,
     })
@@ -518,31 +477,11 @@ function createMainUI()
     })
     VisualsSection:Toggle({
         Title = "ESP",
-        Desc = "Подсветка игроков (сквозь стены)",
+        Desc = "Подсветка игроков (сквозь стены и невидимость)",
         Value = State.esp,
         Callback = function(v)
             if v ~= State.esp then
                 if v then startESP() else stopESP() end
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Night Mode",
-        Desc = "Делает ночь в игре",
-        Value = State.night,
-        Callback = function(v)
-            if v ~= State.night then
-                toggleNight()
-            end
-        end,
-    })
-    VisualsSection:Toggle({
-        Title = "Orbs",
-        Desc = "Парящие шары со шлейфом и освещением",
-        Value = State.orbs,
-        Callback = function(v)
-            if v ~= State.orbs then
-                if v then startOrbs() else stopOrbs() end
             end
         end,
     })
@@ -569,8 +508,7 @@ function createMainUI()
     if State.infJump then startInfJump() end
     if State.platform then startPlatform() end
     if State.esp then startESP() end
-    if State.night then toggleNight() end
-    if State.orbs then startOrbs() end
+    if State.airStick then startAirStick() end
 end
 
 -- ====== ЗАПУСК ======
