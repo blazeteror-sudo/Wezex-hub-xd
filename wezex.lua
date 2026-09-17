@@ -1,93 +1,96 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM) | STEEL BRAINROT (FINAL WITH GUI BINDS)
+-- WEZEX HUB v4.2 - FIXED LAUNCH
 -- КЛЮЧ: 38399923
 
-local CoreGui = game:GetService("CoreGui")
+-- ====== ЗАЩИТА ОТ ПАДЕНИЙ ======
+local function log(...)
+    print("[WezexHub]", ...)
+end
+local function warnLog(...)
+    warn("[WezexHub]", ...)
+end
+
+-- ====== СЕРВИСЫ ======
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
-local Lighting = game:GetService("Lighting")
 
--- ====== БЕЗОПАСНЫЙ РОДИТЕЛЬ ДЛЯ GUI ======
-local function getSafeGuiParent()
-    if gethui then
+-- ====== РОДИТЕЛЬ GUI ======
+local function getGuiParent()
+    -- пробуем gethui
+    if type(gethui) == "function" then
         local ok, hui = pcall(gethui)
         if ok and hui then return hui end
     end
+    -- пробуем CoreGui
     local ok, cg = pcall(function() return CoreGui end)
     if ok and cg then return cg end
+    -- fallback
     return LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- ====== ЗАГРУЗКА WINDUI ======
-local WindUI
-do
-    local ok, result = pcall(function()
-        local src = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
-        return loadstring(src)()
-    end)
-    if ok and type(result) == "table" and result.CreateWindow then
-        WindUI = result
-    else
-        warn("[WezexHub] WindUI не загрузился с основного источника, пробую резервный...")
-        local ok2, result2 = pcall(function()
-            return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-        end)
-        if ok2 and type(result2) == "table" and result2.CreateWindow then
-            WindUI = result2
-        else
-            error("[WezexHub] Не удалось загрузить WindUI. Проверь интернет/executor.")
-        end
-    end
-    print("[WezexHub] WindUI загружен:", typeof(WindUI))
-end
-
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+-- ====== КЛЮЧ ======
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
 -- ====== СОСТОЯНИЯ ======
 local State = {
-    laser = false,
-    fling = false,
-    infJump = false,
-    platform = false,
-    esp = false,
-    float = false,
+    laser = false, fling = false, infJump = false,
+    platform = false, esp = false, float = false,
 }
+local laserOn, flingOn, infJumpOn, platformOn, floatOn, espOn =
+    false, false, false, false, false, false
 
--- Локальные флаги (не глобальные!)
-local laserOn, flingOn, infJumpOn, platformOn, floatOn, espOn = false, false, false, false, false, false
-
--- ====== ПОДКЛЮЧЕНИЯ ======
 local laserConn, flingConn, infJumpConn = nil, nil, nil
 local espHLs = {}
-local platformConnection = nil
-local platformPart = nil
-local floatConnection = nil
+local platformConnection, platformPart, floatConnection = nil, nil, nil
 local bindButtons = {}
+local WindUI = nil
 
--- ====== GUI-БИНДЫ (ЭКРАННЫЕ КНОПКИ) ======
+-- ====== ЗАГРУЗКА WINDUI ======
+local function loadWindUI()
+    log("Загрузка WindUI...")
+    local ok, result = pcall(function()
+        local src = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+        log("Скачано байт:", #src)
+        return loadstring(src)()
+    end)
+    if ok and type(result) == "table" and result.CreateWindow then
+        log("WindUI загружен успешно")
+        return result
+    end
+    warnLog("Основной источник не сработал, пробую резервный...")
+    local ok2, result2 = pcall(function()
+        return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+    end)
+    if ok2 and type(result2) == "table" and result2.CreateWindow then
+        log("WindUI загружен с резерва")
+        return result2
+    end
+    warnLog("Не удалось загрузить WindUI")
+    return nil
+end
+
+-- ====== ЭКРАННЫЕ БИНДЫ ======
 local function createBindButton(label, stateKey, toggleFunc)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 90, 0, 30)
+    btn.Size = UDim2.new(0, 100, 0, 32)
     btn.Position = UDim2.new(0.85, 0, 0.1 + #bindButtons * 0.055, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    btn.BackgroundTransparency = 0.2
+    btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    btn.BackgroundTransparency = 0.15
     btn.Text = label .. ": OFF"
-    btn.TextSize = 11
+    btn.TextSize = 12
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
-    btn.Parent = getSafeGuiParent()
+    btn.Parent = getGuiParent()
     btn.Visible = false
     btn.ZIndex = 999
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = btn
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 8)
+    c.Parent = btn
 
     btn.MouseButton1Click:Connect(function()
         toggleFunc()
@@ -101,24 +104,21 @@ local function createBindButton(label, stateKey, toggleFunc)
     end)
 
     table.insert(bindButtons, {btn = btn, stateKey = stateKey, label = label})
-    return btn
 end
 
 local function updateBindButtons()
     for _, data in ipairs(bindButtons) do
+        data.btn.Visible = State[data.stateKey] and true or false
         if State[data.stateKey] then
-            data.btn.Visible = true
             data.btn.Text = data.label .. ": ON"
             data.btn.BackgroundColor3 = Color3.fromRGB(80, 220, 160)
-        else
-            data.btn.Visible = false
         end
     end
 end
 
 -- ====== ФУНКЦИИ ======
 
--- 1. LASER AIMBOT
+-- LASER
 local function startLaser()
     if laserConn then laserConn:Disconnect() end
     laserOn = true
@@ -132,10 +132,11 @@ local function startLaser()
         if not handle then return end
         local best, bestDist = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p ~= LocalPlayer and p.Character then
+                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
                 local h2 = p.Character:FindFirstChild("Humanoid")
-                if h2 and h2.Health > 0 then
-                    local d = (handle.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                if hrp and h2 and h2.Health > 0 then
+                    local d = (handle.Position - hrp.Position).Magnitude
                     if d < bestDist then bestDist = d; best = p end
                 end
             end
@@ -148,19 +149,22 @@ local function startLaser()
                 local remote = RepStorage:FindFirstChild("LaserRemote") or RepStorage:FindFirstChild("ShootRemote")
                 if remote then pcall(function() remote:FireServer(target.Position, target) end) end
                 local mouse = LocalPlayer:GetMouse()
-                if mouse then pcall(function() mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire() end) end
+                if mouse then
+                    pcall(function()
+                        mouse.Button1Down:Fire(); task.wait(0.05); mouse.Button1Up:Fire()
+                    end)
+                end
             end
         end
     end)
 end
-
 local function stopLaser()
     if laserConn then laserConn:Disconnect(); laserConn = nil end
     laserOn = false
     State.laser = false
 end
 
--- 2. TOUCH FLING
+-- FLING
 local function toggleFling()
     flingOn = not flingOn
     State.fling = flingOn
@@ -191,43 +195,36 @@ local function toggleFling()
     end
 end
 
--- 3. INFINITE JUMP
+-- INF JUMP
 local function startInfJump()
     if infJumpConn then infJumpConn:Disconnect() end
     infJumpOn = true
     State.infJump = true
     infJumpConn = UserInputService.JumpRequest:Connect(function()
         local c = LocalPlayer.Character
-        if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
-            if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                c.HumanoidRootPart.Velocity = Vector3.new(
-                    c.HumanoidRootPart.Velocity.X,
-                    50,
-                    c.HumanoidRootPart.Velocity.Z
-                )
+        if c then
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            local h2 = c:FindFirstChild("Humanoid")
+            if hrp and h2 and h2:GetState() ~= Enum.HumanoidStateType.Dead then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
             end
         end
     end)
 end
-
 local function stopInfJump()
     if infJumpConn then infJumpConn:Disconnect(); infJumpConn = nil end
     infJumpOn = false
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM
+-- PLATFORM
 local function startPlatform()
     platformOn = true
     State.platform = true
-
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then
-        platformOn = false
-        State.platform = false
-        return
+        platformOn = false; State.platform = false; return
     end
-
     platformPart = Instance.new("Part")
     platformPart.Size = Vector3.new(6, 1, 6)
     platformPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
@@ -237,7 +234,6 @@ local function startPlatform()
     platformPart.Material = Enum.Material.Neon
     platformPart.Color = Color3.fromRGB(0, 255, 255)
     platformPart.Parent = Workspace
-
     local light = Instance.new("PointLight")
     light.Parent = platformPart
     light.Color = Color3.fromRGB(0, 255, 255)
@@ -245,64 +241,36 @@ local function startPlatform()
     light.Brightness = 2
 
     platformConnection = RunService.RenderStepped:Connect(function()
-        if not platformOn then return end
+        if not platformOn or not platformPart then return end
         local c = LocalPlayer.Character
         if not c then return end
         local hrp = c:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        local targetY = hrp.Position.Y - 1.5
-        platformPart.Position = Vector3.new(hrp.Position.X, targetY, hrp.Position.Z)
+        platformPart.Position = Vector3.new(hrp.Position.X, hrp.Position.Y - 1.5, hrp.Position.Z)
     end)
 
     task.spawn(function()
-        while platformOn do
-            task.wait(0.5)
-        end
-        if platformPart then
-            platformPart:Destroy()
-            platformPart = nil
-        end
-        if platformConnection then
-            platformConnection:Disconnect()
-            platformConnection = nil
-        end
+        while platformOn do task.wait(0.5) end
+        if platformPart then platformPart:Destroy(); platformPart = nil end
+        if platformConnection then platformConnection:Disconnect(); platformConnection = nil end
     end)
 end
-
 local function stopPlatform()
     platformOn = false
     State.platform = false
-
-    if platformPart then
-        platformPart:Destroy()
-        platformPart = nil
-    end
-    if platformConnection then
-        platformConnection:Disconnect()
-        platformConnection = nil
-    end
+    if platformPart then platformPart:Destroy(); platformPart = nil end
+    if platformConnection then platformConnection:Disconnect(); platformConnection = nil end
 end
 
--- 5. FLOAT
+-- FLOAT
 local function startFloat()
     floatOn = true
     State.float = true
-
     local char = LocalPlayer.Character
-    if not char then
-        floatOn = false
-        State.float = false
-        return
-    end
+    if not char then floatOn = false; State.float = false; return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then
-        floatOn = false
-        State.float = false
-        return
-    end
-
-    local frozenPos = hrp.Position
-
+    if not hrp then floatOn = false; State.float = false; return end
+    local frozenY = hrp.Position.Y
     floatConnection = RunService.RenderStepped:Connect(function()
         if not floatOn then return end
         local c = LocalPlayer.Character
@@ -310,266 +278,234 @@ local function startFloat()
         local root = c:FindFirstChild("HumanoidRootPart")
         if not root then return end
         root.Velocity = Vector3.new(0, 0, 0)
-        root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
+        root.CFrame = CFrame.new(root.Position.X, frozenY, root.Position.Z)
     end)
 end
-
 local function stopFloat()
     floatOn = false
     State.float = false
-    if floatConnection then
-        floatConnection:Disconnect()
-        floatConnection = nil
-    end
+    if floatConnection then floatConnection:Disconnect(); floatConnection = nil end
 end
 
--- 6. ESP
+-- ESP
 local function startESP()
     espOn = true
     State.esp = true
     local function updateESP()
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
+            if p ~= LocalPlayer and p.Character then
                 local char = p.Character
-                if char then
-                    local hl = char:FindFirstChild("WezexESP")
-                    if not hl then
-                        hl = Instance.new("Highlight")
-                        hl.Name = "WezexESP"
-                        hl.Adornee = char
-                        hl.FillColor = Color3.fromRGB(255, 50, 50)
-                        hl.FillTransparency = 0.2
-                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        hl.OutlineTransparency = 0.1
-                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        hl.Parent = char
-                        table.insert(espHLs, hl)
-                    end
+                if not char:FindFirstChild("WezexESP") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "WezexESP"
+                    hl.Adornee = char
+                    hl.FillColor = Color3.fromRGB(255, 50, 50)
+                    hl.FillTransparency = 0.2
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.OutlineTransparency = 0.1
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    hl.Parent = char
+                    table.insert(espHLs, hl)
                 end
             end
         end
     end
     updateESP()
-    local conn1 = Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end)
-    table.insert(espHLs, conn1)
-    local conn2 = Workspace.ChildAdded:Connect(function(child)
+    table.insert(espHLs, Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end))
+    table.insert(espHLs, Workspace.ChildAdded:Connect(function(child)
         if child:IsA("Model") and child:FindFirstChild("Humanoid") then
             task.wait(0.3); updateESP()
         end
-    end)
-    table.insert(espHLs, conn2)
-    local conn3 = RunService.Heartbeat:Connect(updateESP)
-    table.insert(espHLs, conn3)
+    end))
+    table.insert(espHLs, RunService.Heartbeat:Connect(updateESP))
 end
-
 local function stopESP()
     espOn = false
     State.esp = false
     for _, obj in ipairs(espHLs) do
-        if typeof(obj) == "Instance" then
-            if obj.Parent then obj:Destroy() end
-        elseif typeof(obj) == "RBXScriptConnection" then
-            obj:Disconnect()
-        end
+        pcall(function()
+            if obj.Disconnect then obj:Disconnect()
+            elseif obj.Destroy then obj:Destroy() end
+        end)
     end
     espHLs = {}
 end
 
 -- ====== ГЛАВНОЕ МЕНЮ ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
-        Folder = "WezexHub",
-        Icon = "solar:folder-2-bold-duotone",
-        KeySystem = false, -- ВАЖНО: отключаем встроенную систему ключей WindUI
-        OpenButton = {
-            Title = "Wezex Hub",
-            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-            Draggable = true,
-            Scale = 0.5,
-        },
-    })
+local function createMainUI()
+    log("Создание главного меню...")
 
-    -- ВКЛАДКА COMBAT
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Combat Settings",
-    })
-    CombatSection:Toggle({
-        Title = "Laser Aimbot",
-        Desc = "Автострельба лазером по игрокам",
-        Value = State.laser,
-        Callback = function(v)
-            if v ~= State.laser then
-                if v then startLaser() else stopLaser() end
-                updateBindButtons()
-            end
-        end,
-    })
-    CombatSection:Toggle({
-        Title = "Touch Fling",
-        Desc = "Вылетает из карты",
-        Value = State.fling,
-        Callback = function(v)
-            if v ~= State.fling then
-                toggleFling()
-                updateBindButtons()
-            end
-        end,
-    })
+    if not WindUI then
+        warnLog("WindUI отсутствует!")
+        return
+    end
 
-    -- ВКЛАДКА MOVEMENT
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
-    MovementSection:Toggle({
-        Title = "Infinite Jump",
-        Desc = "Бесконечные прыжки",
-        Value = State.infJump,
-        Callback = function(v)
-            if v ~= State.infJump then
-                if v then startInfJump() else stopInfJump() end
-                updateBindButtons()
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Anti-Death Platform",
-        Desc = "Платформа под ногами (экранная кнопка)",
-        Value = State.platform,
-        Callback = function(v)
-            if v ~= State.platform then
-                if v then startPlatform() else stopPlatform() end
-                updateBindButtons()
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Float",
-        Desc = "Зависание в воздухе (экранная кнопка)",
-        Value = State.float,
-        Callback = function(v)
-            if v ~= State.float then
-                if v then startFloat() else stopFloat() end
-                updateBindButtons()
-            end
-        end,
-    })
+    local ok, err = pcall(function()
+        local Window = WindUI:CreateWindow({
+            Title = "Wezex Hub v4.2",
+            Folder = "WezexHub",
+            Icon = "solar:folder-2-bold-duotone",
+            KeySystem = false,
+            OpenButton = {
+                Title = "Wezex Hub",
+                Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
+                Draggable = true,
+                Scale = 0.5,
+            },
+        })
 
-    -- ВКЛАДКА VISUALS
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
-    })
-    VisualsSection:Toggle({
-        Title = "ESP",
-        Desc = "Подсветка игроков (сквозь стены и невидимость)",
-        Value = State.esp,
-        Callback = function(v)
-            if v ~= State.esp then
-                if v then startESP() else stopESP() end
-                updateBindButtons()
-            end
-        end,
-    })
+        -- COMBAT
+        local CombatTab = Window:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
+        local CombatSection = CombatTab:Section({ Title = "Combat Settings" })
+        CombatSection:Toggle({
+            Title = "Laser Aimbot",
+            Desc = "Автострельба лазером",
+            Value = State.laser,
+            Callback = function(v)
+                if v ~= State.laser then
+                    if v then startLaser() else stopLaser() end
+                    updateBindButtons()
+                end
+            end,
+        })
+        CombatSection:Toggle({
+            Title = "Touch Fling",
+            Desc = "Вылет из карты",
+            Value = State.fling,
+            Callback = function(v)
+                if v ~= State.fling then toggleFling(); updateBindButtons() end
+            end,
+        })
 
-    -- ВКЛАДКА ABOUT
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
-    })
-    AboutSection:Button({
-        Title = "Destroy Window",
-        Color = Color3.fromRGB(255, 50, 50),
-        Callback = function()
-            Window:Destroy()
-        end,
-    })
+        -- MOVEMENT
+        local MovementTab = Window:Tab({ Title = "Movement", Icon = "solar:running-bold" })
+        local MovementSection = MovementTab:Section({ Title = "Movement Settings" })
+        MovementSection:Toggle({
+            Title = "Infinite Jump",
+            Desc = "Бесконечный прыжок",
+            Value = State.infJump,
+            Callback = function(v)
+                if v ~= State.infJump then
+                    if v then startInfJump() else stopInfJump() end
+                    updateBindButtons()
+                end
+            end,
+        })
+        MovementSection:Toggle({
+            Title = "Anti-Death Platform",
+            Desc = "Платформа под ногами",
+            Value = State.platform,
+            Callback = function(v)
+                if v ~= State.platform then
+                    if v then startPlatform() else stopPlatform() end
+                    updateBindButtons()
+                end
+            end,
+        })
+        MovementSection:Toggle({
+            Title = "Float",
+            Desc = "Зависание в воздухе",
+            Value = State.float,
+            Callback = function(v)
+                if v ~= State.float then
+                    if v then startFloat() else stopFloat() end
+                    updateBindButtons()
+                end
+            end,
+        })
 
-    -- ЭКРАННЫЕ КНОПКИ-БИНДЫ
-    createBindButton("Float", "float", function()
-        if State.float then stopFloat() else startFloat() end
+        -- VISUALS
+        local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
+        local VisualsSection = VisualsTab:Section({ Title = "Visual Settings" })
+        VisualsSection:Toggle({
+            Title = "ESP",
+            Desc = "Подсветка игроков",
+            Value = State.esp,
+            Callback = function(v)
+                if v ~= State.esp then
+                    if v then startESP() else stopESP() end
+                    updateBindButtons()
+                end
+            end,
+        })
+
+        -- ABOUT
+        local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-square-bold" })
+        local AboutSection = AboutTab:Section({ Title = "Wezex Hub v4.2" })
+        AboutSection:Button({
+            Title = "Destroy Window",
+            Color = Color3.fromRGB(255, 50, 50),
+            Callback = function() Window:Destroy() end,
+        })
+
+        -- ЭКРАННЫЕ БИНДЫ
+        createBindButton("Float", "float", function()
+            if State.float then stopFloat() else startFloat() end
+            updateBindButtons()
+        end)
+        createBindButton("Platform", "platform", function()
+            if State.platform then stopPlatform() else startPlatform() end
+            updateBindButtons()
+        end)
+
         updateBindButtons()
+        log("Главное меню создано успешно!")
     end)
 
-    createBindButton("Platform", "platform", function()
-        if State.platform then stopPlatform() else startPlatform() end
-        updateBindButtons()
-    end)
-
-    -- Синхронизация
-    if State.laser then startLaser() end
-    if State.fling then toggleFling() end
-    if State.infJump then startInfJump() end
-    if State.platform then startPlatform() end
-    if State.esp then startESP() end
-    if State.float then startFloat() end
-    updateBindButtons()
+    if not ok then
+        warnLog("Ошибка создания меню:", err)
+    end
 end
 
 -- ====== ОКНО КЛЮЧА ======
-local function showNativeKeyWindow()
+local function showKeyWindow()
+    log("Показ окна ключа...")
+
     pcall(function()
-        local parent = getSafeGuiParent()
-        local old = parent:FindFirstChild("KeySystem")
+        local parent = getGuiParent()
+        local old = parent:FindFirstChild("WezexKeySystem")
         if old then old:Destroy() end
     end)
 
     local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.Parent = getSafeGuiParent()
+    keyGui.Name = "WezexKeySystem"
+    keyGui.Parent = getGuiParent()
     keyGui.ResetOnSpawn = false
     keyGui.IgnoreGuiInset = true
-    keyGui.DisplayOrder = 999
+    keyGui.DisplayOrder = 9999
 
     local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.Size = UDim2.new(0, 280, 0, 160)
+    panel.Position = UDim2.new(0.5, -140, 0.5, -80)
     panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
+    panel.BackgroundTransparency = 0.1
     panel.Parent = keyGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
 
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 6)
+    title.Size = UDim2.new(1, 0, 0, 32)
+    title.Position = UDim2.new(0, 0, 0, 8)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBlack
     title.TextSize = 20
     title.TextColor3 = Color3.fromRGB(200, 150, 255)
     title.Text = "Wezex Hub"
-    title.TextXAlignment = Enum.TextXAlignment.Center
     title.Parent = panel
 
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, 0, 0, 18)
-    info.Position = UDim2.new(0, 0, 0, 42)
+    info.Position = UDim2.new(0, 0, 0, 46)
     info.BackgroundTransparency = 1
     info.Font = Enum.Font.Gotham
     info.TextSize = 12
     info.TextColor3 = Color3.fromRGB(160, 160, 200)
     info.Text = "Введите ключ доступа"
-    info.TextXAlignment = Enum.TextXAlignment.Center
     info.Parent = panel
 
     local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.Size = UDim2.new(0.7, 0, 0, 36)
+    keyBox.Position = UDim2.new(0.15, 0, 0, 70)
     keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
     keyBox.Font = Enum.Font.GothamBold
     keyBox.TextSize = 16
     keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -581,10 +517,9 @@ local function showNativeKeyWindow()
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
     local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.Size = UDim2.new(0.4, 0, 0, 36)
+    enterBtn.Position = UDim2.new(0.3, 0, 0, 114)
     enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
     enterBtn.Text = "Войти"
     enterBtn.TextSize = 16
     enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -599,15 +534,19 @@ local function showNativeKeyWindow()
         if keyBox.Text == CORRECT_KEY then
             keyVerified = true
             keyGui:Destroy()
-            local ok, err = pcall(createMainUI)
-            if not ok then
-                warn("[WezexHub] Ошибка при создании меню: " .. tostring(err))
+            log("Ключ верный, запускаю меню...")
+            -- Загружаем WindUI только после верного ключа
+            WindUI = loadWindUI()
+            if WindUI then
+                createMainUI()
+            else
+                warnLog("WindUI не загрузился")
             end
         else
             keyBox.Text = ""
             keyBox.PlaceholderText = "Неверно!"
             keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
+            task.wait(0.7)
             keyBox.PlaceholderText = "Ключ"
             keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
         end
@@ -615,4 +554,24 @@ local function showNativeKeyWindow()
     end
 
     enterBtn.MouseButton1Click:Connect(checkKey)
-    
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then checkKey() end
+    end)
+
+    log("Окно ключа показано")
+end
+
+-- ====== ЗАПУСК ======
+log("=== Wezex Hub v4.2 запуск ===")
+log("Executor info:")
+log("  loadstring:", type(loadstring))
+log("  gethui:", type(gethui))
+log("  HttpGet:", type(game.HttpGet))
+
+local ok, err = pcall(showKeyWindow)
+if not ok then
+    warnLog("Критическая ошибка:", err)
+    -- Аварийное окно с ошибкой
+    local sg = Instance.new("ScreenGui")
+    sg.Parent = getGuiParent()
+    local lbl = Instance.new
