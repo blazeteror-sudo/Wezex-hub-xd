@@ -11,17 +11,38 @@ local RepStorage = game:GetService("ReplicatedStorage")
 local Workspace = workspace
 local Lighting = game:GetService("Lighting")
 
+-- ====== БЕЗОПАСНЫЙ РОДИТЕЛЬ ДЛЯ GUI ======
+local function getSafeGuiParent()
+    if gethui then
+        local ok, hui = pcall(gethui)
+        if ok and hui then return hui end
+    end
+    local ok, cg = pcall(function() return CoreGui end)
+    if ok and cg then return cg end
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
 do
     local ok, result = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+        local src = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+        return loadstring(src)()
     end)
-    if ok then
+    if ok and type(result) == "table" and result.CreateWindow then
         WindUI = result
     else
-        error("WindUI не загрузился")
+        warn("[WezexHub] WindUI не загрузился с основного источника, пробую резервный...")
+        local ok2, result2 = pcall(function()
+            return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+        end)
+        if ok2 and type(result2) == "table" and result2.CreateWindow then
+            WindUI = result2
+        else
+            error("[WezexHub] Не удалось загрузить WindUI. Проверь интернет/executor.")
+        end
     end
+    print("[WezexHub] WindUI загружен:", typeof(WindUI))
 end
 
 -- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
@@ -37,6 +58,9 @@ local State = {
     esp = false,
     float = false,
 }
+
+-- Локальные флаги (не глобальные!)
+local laserOn, flingOn, infJumpOn, platformOn, floatOn, espOn = false, false, false, false, false, false
 
 -- ====== ПОДКЛЮЧЕНИЯ ======
 local laserConn, flingConn, infJumpConn = nil, nil, nil
@@ -57,10 +81,13 @@ local function createBindButton(label, stateKey, toggleFunc)
     btn.TextSize = 11
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
-    btn.Parent = CoreGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+    btn.Parent = getSafeGuiParent()
     btn.Visible = false
     btn.ZIndex = 999
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
 
     btn.MouseButton1Click:Connect(function()
         toggleFunc()
@@ -138,7 +165,10 @@ local function toggleFling()
     flingOn = not flingOn
     State.fling = flingOn
     if flingOn then
-        pcall(function() local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"); if h2 then h2.AutoJumpEnabled = false end end)
+        pcall(function()
+            local h2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+            if h2 then h2.AutoJumpEnabled = false end
+        end)
         if not RepStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
             local m = Instance.new("Decal")
             m.Name = "juisdfj0i32i0eidsuf0iok"
@@ -149,11 +179,11 @@ local function toggleFling()
             local r = c and c:FindFirstChild("HumanoidRootPart")
             if r then
                 local v = r.Velocity
-                r.Velocity = v * 10000 + Vector3.new(0,10000,0)
+                r.Velocity = v * 10000 + Vector3.new(0, 10000, 0)
                 RunService.RenderStepped:Wait()
                 r.Velocity = v
                 RunService.Stepped:Wait()
-                r.Velocity = v + Vector3.new(0,0.1,0)
+                r.Velocity = v + Vector3.new(0, 0.1, 0)
             end
         end)
     else
@@ -170,7 +200,11 @@ local function startInfJump()
         local c = LocalPlayer.Character
         if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Humanoid") then
             if c.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                c.HumanoidRootPart.Velocity = Vector3.new(c.HumanoidRootPart.Velocity.X, 50, c.HumanoidRootPart.Velocity.Z)
+                c.HumanoidRootPart.Velocity = Vector3.new(
+                    c.HumanoidRootPart.Velocity.X,
+                    50,
+                    c.HumanoidRootPart.Velocity.Z
+                )
             end
         end
     end)
@@ -182,14 +216,21 @@ local function stopInfJump()
     State.infJump = false
 end
 
--- 4. ANTI-DEATH PLATFORM (ФИКС ВЫСОТЫ)
+-- 4. ANTI-DEATH PLATFORM
 local function startPlatform()
     platformOn = true
     State.platform = true
 
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        platformOn = false
+        State.platform = false
+        return
+    end
+
     platformPart = Instance.new("Part")
     platformPart.Size = Vector3.new(6, 1, 6)
-    platformPart.Position = LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
+    platformPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 2, 0)
     platformPart.Anchored = true
     platformPart.CanCollide = true
     platformPart.Transparency = 0.4
@@ -205,12 +246,10 @@ local function startPlatform()
 
     platformConnection = RunService.RenderStepped:Connect(function()
         if not platformOn then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local c = LocalPlayer.Character
+        if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-
-        -- ФИКСИРОВАННАЯ ВЫСОТА: 1.5 блока под игроком
         local targetY = hrp.Position.Y - 1.5
         platformPart.Position = Vector3.new(hrp.Position.X, targetY, hrp.Position.Z)
     end)
@@ -244,15 +283,23 @@ local function stopPlatform()
     end
 end
 
--- 5. FLOAT (ЗАВИСАНИЕ В ВОЗДУХЕ)
+-- 5. FLOAT
 local function startFloat()
     floatOn = true
     State.float = true
 
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then
+        floatOn = false
+        State.float = false
+        return
+    end
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    if not hrp then
+        floatOn = false
+        State.float = false
+        return
+    end
 
     local frozenPos = hrp.Position
 
@@ -262,7 +309,6 @@ local function startFloat()
         if not c then return end
         local root = c:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        -- Замораживаем в воздухе
         root.Velocity = Vector3.new(0, 0, 0)
         root.CFrame = CFrame.new(root.Position.X, frozenPos.Y, root.Position.Z)
     end)
@@ -277,34 +323,40 @@ local function stopFloat()
     end
 end
 
--- 6. ESP (ОБХОД НЕВИДИМОСТИ)
+-- 6. ESP
 local function startESP()
     espOn = true
     State.esp = true
     local function updateESP()
         for _, p in ipairs(Players:GetPlayers()) do
-            if p == LocalPlayer then continue end
-            local char = p.Character
-            if not char then continue end
-            local hl = char:FindFirstChild("WezexESP")
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "WezexESP"
-                hl.Adornee = char
-                hl.FillColor = Color3.fromRGB(255, 50, 50)
-                hl.FillTransparency = 0.2
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.OutlineTransparency = 0.1
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Parent = char
-                table.insert(espHLs, hl)
+            if p ~= LocalPlayer then
+                local char = p.Character
+                if char then
+                    local hl = char:FindFirstChild("WezexESP")
+                    if not hl then
+                        hl = Instance.new("Highlight")
+                        hl.Name = "WezexESP"
+                        hl.Adornee = char
+                        hl.FillColor = Color3.fromRGB(255, 50, 50)
+                        hl.FillTransparency = 0.2
+                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        hl.OutlineTransparency = 0.1
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                        hl.Parent = char
+                        table.insert(espHLs, hl)
+                    end
+                end
             end
         end
     end
     updateESP()
     local conn1 = Players.PlayerAdded:Connect(function() task.wait(0.5); updateESP() end)
     table.insert(espHLs, conn1)
-    local conn2 = Workspace.ChildAdded:Connect(function(child) if child:IsA("Model") and child:FindFirstChild("Humanoid") then task.wait(0.3); updateESP() end end)
+    local conn2 = Workspace.ChildAdded:Connect(function(child)
+        if child:IsA("Model") and child:FindFirstChild("Humanoid") then
+            task.wait(0.3); updateESP()
+        end
+    end)
     table.insert(espHLs, conn2)
     local conn3 = RunService.Heartbeat:Connect(updateESP)
     table.insert(espHLs, conn3)
@@ -313,109 +365,23 @@ end
 local function stopESP()
     espOn = false
     State.esp = false
-    for _, obj in ipairs(espHLs) do if obj and obj.Parent then obj:Destroy() end end
+    for _, obj in ipairs(espHLs) do
+        if typeof(obj) == "Instance" then
+            if obj.Parent then obj:Destroy() end
+        elseif typeof(obj) == "RBXScriptConnection" then
+            obj:Disconnect()
+        end
+    end
     espHLs = {}
 end
 
--- ====== ОКНО КЛЮЧА ======
-local function showNativeKeyWindow()
-    pcall(function()
-        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
-    end)
-
-    local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.Parent = CoreGui
-    keyGui.ResetOnSpawn = false
-    keyGui.IgnoreGuiInset = true
-
-    local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
-    panel.Parent = keyGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 6)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBlack
-    title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
-    title.Text = "Wezex Hub"
-    title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = panel
-
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 18)
-    info.Position = UDim2.new(0, 0, 0, 42)
-    info.BackgroundTransparency = 1
-    info.Font = Enum.Font.Gotham
-    info.TextSize = 12
-    info.TextColor3 = Color3.fromRGB(160, 160, 200)
-    info.Text = "Введите ключ доступа"
-    info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = panel
-
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
-    keyBox.Font = Enum.Font.GothamBold
-    keyBox.TextSize = 16
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.Text = ""
-    keyBox.PlaceholderText = "Ключ"
-    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
-    enterBtn.Text = "Войти"
-    enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
-    local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyVerified = true
-            keyGui:Destroy()
-            createMainUI()
-        else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
-            task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-        end
-    end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
-end
-
--- ====== GUI ======
+-- ====== ГЛАВНОЕ МЕНЮ ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
         Title = "Wezex Hub v4.1",
         Folder = "WezexHub",
         Icon = "solar:folder-2-bold-duotone",
+        KeySystem = false, -- ВАЖНО: отключаем встроенную систему ключей WindUI
         OpenButton = {
             Title = "Wezex Hub",
             Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
@@ -533,22 +499,14 @@ function createMainUI()
         end,
     })
 
-    -- СОЗДАНИЕ ЭКРАННЫХ КНОПОК-БИНДОВ
+    -- ЭКРАННЫЕ КНОПКИ-БИНДЫ
     createBindButton("Float", "float", function()
-        if State.float then
-            stopFloat()
-        else
-            startFloat()
-        end
+        if State.float then stopFloat() else startFloat() end
         updateBindButtons()
     end)
 
     createBindButton("Platform", "platform", function()
-        if State.platform then
-            stopPlatform()
-        else
-            startPlatform()
-        end
+        if State.platform then stopPlatform() else startPlatform() end
         updateBindButtons()
     end)
 
@@ -562,5 +520,99 @@ function createMainUI()
     updateBindButtons()
 end
 
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+-- ====== ОКНО КЛЮЧА ======
+local function showNativeKeyWindow()
+    pcall(function()
+        local parent = getSafeGuiParent()
+        local old = parent:FindFirstChild("KeySystem")
+        if old then old:Destroy() end
+    end)
+
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystem"
+    keyGui.Parent = getSafeGuiParent()
+    keyGui.ResetOnSpawn = false
+    keyGui.IgnoreGuiInset = true
+    keyGui.DisplayOrder = 999
+
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 260, 0, 150)
+    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
+    panel.BackgroundTransparency = 0.15
+    panel.Parent = keyGui
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(200, 150, 255)
+    title.Text = "Wezex Hub"
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = panel
+
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 18)
+    info.Position = UDim2.new(0, 0, 0, 42)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(160, 160, 200)
+    info.Text = "Введите ключ доступа"
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = panel
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
+    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
+    keyBox.BackgroundTransparency = 0.3
+    keyBox.Font = Enum.Font.GothamBold
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.Text = ""
+    keyBox.PlaceholderText = "Ключ"
+    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local enterBtn = Instance.new("TextButton")
+    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
+    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
+    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    enterBtn.BackgroundTransparency = 0.2
+    enterBtn.Text = "Войти"
+    enterBtn.TextSize = 16
+    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterBtn.Font = Enum.Font.GothamBold
+    enterBtn.Parent = panel
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+
+    local checking = false
+    local function checkKey()
+        if checking then return end
+        checking = true
+        if keyBox.Text == CORRECT_KEY then
+            keyVerified = true
+            keyGui:Destroy()
+            local ok, err = pcall(createMainUI)
+            if not ok then
+                warn("[WezexHub] Ошибка при создании меню: " .. tostring(err))
+            end
+        else
+            keyBox.Text = ""
+            keyBox.PlaceholderText = "Неверно!"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            task.wait(0.6)
+            keyBox.PlaceholderText = "Ключ"
+            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+        end
+        checking = false
+    end
+
+    enterBtn.MouseButton1Click:Connect(checkKey)
+    
