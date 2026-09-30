@@ -38,7 +38,9 @@ local State = {
     aimbotKey = "E",
     aimbotHold = true,
     showFov = true,
-}-- ====== ESP (SAFE — Drawing API) ======
+}
+
+-- ====== ESP (SAFE — Drawing API) ======
 local espDrawings = {}
 local espRenderConn = nil
 
@@ -108,7 +110,9 @@ local function createDrawingFor(player)
         hpBar = hpBar,
         hpBarBg = hpBarBg,
     }
-endlocal function removeDrawingFor(player)
+end
+
+local function removeDrawingFor(player)
     local data = espDrawings[player]
     if not data then return end
     if data.box and data.box.Remove then data.box:Remove() end
@@ -210,7 +214,9 @@ local function toggleESP()
         if espPlayerRemoving then espPlayerRemoving:Disconnect() espPlayerRemoving = nil end
         clearESP()
     end
-    end-- ====== AIMBOT (FOV-based, работает только в поле зрения) ======
+end
+
+-- ====== AIMBOT (FOV-based) ======
 local aimbotHeld = false
 local aimbotRenderConn = nil
 
@@ -331,7 +337,9 @@ local function toggleAimbot()
     else
         stopAimbot()
     end
-        endUserInputService.InputBegan:Connect(function(input, gpe)
+end
+
+UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if State.aimbotHold and State.aimbot then
         if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
@@ -402,7 +410,9 @@ local function toggleInfJump()
             infJumpConnection = nil
         end
     end
-            end-- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
+end
+
+-- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -493,7 +503,9 @@ local function showNativeKeyWindow()
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Return then checkKey() end
     end)
-                end-- ====== ОСНОВНОЙ GUI ======
+end
+
+-- ====== ОСНОВНОЙ GUI ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
         Title = "Wezex Hub v4.3",
@@ -592,75 +604,12 @@ function createMainUI()
         Callback = function(v)
             State.showFov = v
         end,
-    })    -- ===== MOVEMENT =====
+    })
+
+    -- ===== MOVEMENT =====
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
     })
     local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
-    MovementSection:Toggle({
-        Title = "Noclip",
-        Desc = "Проход сквозь стены",
-        Value = State.noclip,
-        Callback = function(v)
-            if v ~= State.noclip then
-                toggleNoclip()
-            end
-        end,
-    })
-    MovementSection:Toggle({
-        Title = "Infinity Jump",
-        Desc = "Бесконечные прыжки",
-        Value = State.infJump,
-        Callback = function(v)
-            if v ~= State.infJump then
-                toggleInfJump()
-            end
-        end,
-    })
-
-    -- ===== VISUALS =====
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ ESP Settings",
-    })
-    VisualsSection:Toggle({
-        Title = "ESP (Drawing)",
-        Desc = "Безопасный ESP через Drawing API",
-        Value = State.esp,
-        Callback = function(v)
-            if v ~= State.esp then
-                toggleESP()
-            end
-        end,
-    })
-
-    -- ===== ABOUT =====
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.3",
-    })
-    AboutSection:Button({
-        Title = "Destroy Window",
-        Color = Color3.fromRGB(255, 50, 50),
-        Callback = function()
-            Window:Destroy()
-        end,
-    })
-
-    if State.esp then toggleESP() end
-    if State.aimbot then toggleAimbot() end
-    if State.noclip then toggleNoclip() end
-    if State.infJump then toggleInfJump() end
-end
-
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+        Title = "🏃 Mov
