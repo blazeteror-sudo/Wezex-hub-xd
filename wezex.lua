@@ -8,7 +8,7 @@ local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- ====== ЗАГРУЗКА WINDUI ======
+-- ====== WINDUI ======
 local WindUI
 do
     local ok, result = pcall(function()
@@ -26,11 +26,8 @@ local State = {
     noclip = false,
     infJump = false,
     aimbotFOV = 250,
-    aimbotSmooth = 0.25,
     aimbotPart = "Head",
     aimbotVisibleCheck = true,
-    aimbotKey = "E",
-    aimbotHold = true,
     showFov = true,
 }
 
@@ -140,8 +137,8 @@ local function toggleESP()
     end
 end
 
--- ====== AIMBOT (FOV-based) ======
-local aimbotHeld, aimbotConn = false, nil
+-- ====== AIMBOT (моментальный, без кнопки) ======
+local aimbotConn = nil
 
 local fovCircle = Drawing.new("Circle")
 fovCircle.Thickness, fovCircle.NumSides, fovCircle.Filled = 1, 60, false
@@ -194,12 +191,10 @@ end
 local function updateAimbot()
     updateFovCircle()
     if not State.aimbot then return end
-    if State.aimbotHold and not aimbotHeld then return end
     local target = getTarget()
     if not target then return end
-    local cur = Camera.CFrame
-    local tgt = CFrame.new(cur.Position, target.Position)
-    Camera.CFrame = cur:Lerp(tgt, math.clamp(State.aimbotSmooth, 0.01, 1))
+    -- Моментальная наводка (без плавности)
+    Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
 end
 
 local function toggleAimbot()
@@ -212,21 +207,6 @@ local function toggleAimbot()
         fovCircle.Visible = false
     end
 end
-
-local function isAimbotKey(input)
-    return (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2)
-        or (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1)
-        or (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey])
-end
-
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if State.aimbotHold and State.aimbot and isAimbotKey(input) then aimbotHeld = true end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if State.aimbotHold and State.aimbot and isAimbotKey(input) then aimbotHeld = false end
-end)
 
 -- ====== NOCLIP ======
 local noclipConn = nil
@@ -331,7 +311,7 @@ end
 -- ====== ОСНОВНОЙ GUI ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.3",
+        Title = "Wezex Hub v4.4",
         Folder = "WezexHub",
         Icon = "solar:folder-2-bold-duotone",
         OpenButton = {
@@ -342,39 +322,39 @@ function createMainUI()
         },
     })
 
+    -- ===== COMBAT =====
     local CombatTab = Window:Tab({Title = "Combat", Icon = "solar:sword-bold"})
     local CombatSection = CombatTab:Section({Title = "⚔️ Aimbot"})
-    CombatSection:Toggle({Title = "Aimbot", Desc = "Наводка только в поле зрения", Value = State.aimbot,
+    CombatSection:Toggle({Title = "Aimbot", Desc = "Моментальная наводка, работает сразу", Value = State.aimbot,
         Callback = function(v) if v ~= State.aimbot then toggleAimbot() end end})
-    CombatSection:Dropdown({Title = "Кнопка", Values = {"E","Q","F","C","V","MouseButton2","MouseButton1"}, Value = State.aimbotKey,
-        Callback = function(v) State.aimbotKey = v end})
-    CombatSection:Toggle({Title = "Удерживать", Value = State.aimbotHold,
-        Callback = function(v) State.aimbotHold = v end})
-    CombatSection:Slider({Title = "FOV", Min = 50, Max = 800, Value = State.aimbotFOV,
+    CombatSection:Slider({Title = "FOV (радиус захвата)", Desc = "Чем меньше — тем точнее",
+        Min = 50, Max = 1000, Value = State.aimbotFOV,
         Callback = function(v) State.aimbotFOV = v end})
-    CombatSection:Slider({Title = "Smooth", Min = 0.05, Max = 1, Value = State.aimbotSmooth,
-        Callback = function(v) State.aimbotSmooth = v end})
     CombatSection:Dropdown({Title = "Часть тела", Values = {"Head","HumanoidRootPart","UpperTorso","Torso"}, Value = State.aimbotPart,
         Callback = function(v) State.aimbotPart = v end})
     CombatSection:Toggle({Title = "Проверка видимости", Value = State.aimbotVisibleCheck,
         Callback = function(v) State.aimbotVisibleCheck = v end})
-    CombatSection:Toggle({Title = "FOV круг", Value = State.showFov,
+    CombatSection:Toggle({Title = "Показывать FOV круг", Value = State.showFov,
         Callback = function(v) State.showFov = v end})
 
+    -- ===== MOVEMENT =====
     local MovementTab = Window:Tab({Title = "Movement", Icon = "solar:running-bold"})
     local MovementSection = MovementTab:Section({Title = "🏃 Movement"})
-    MovementSection:Toggle({Title = "Noclip", Value = State.noclip,
+    MovementSection:Toggle({Title = "Noclip", Desc = "Проход сквозь стены", Value = State.noclip,
         Callback = function(v) if v ~= State.noclip then toggleNoclip() end end})
-    MovementSection:Toggle({Title = "Infinity Jump", Value = State.infJump,
+    MovementSection:Toggle({Title = "Infinity Jump", Desc = "Бесконечные прыжки", Value = State.infJump,
         Callback = function(v) if v ~= State.infJump then toggleInfJump() end end})
 
+    -- ===== VISUALS =====
     local VisualsTab = Window:Tab({Title = "Visuals", Icon = "solar:eye-bold"})
     local VisualsSection = VisualsTab:Section({Title = "👁️ ESP"})
-    VisualsSection:Toggle({Title = "ESP (Drawing)", Value = State.esp,
+    VisualsSection:Toggle({Title = "ESP (Drawing)", Desc = "Безопасный ESP", Value = State.esp,
         Callback = function(v) if v ~= State.esp then toggleESP() end end})
 
+    -- ===== ABOUT =====
     local AboutTab = Window:Tab({Title = "About", Icon = "solar:info-square-bold"})
-    AboutTab:Section({Title = "Wezex Hub v4.3"}):Button({Title = "Destroy Window", Color = Color3.fromRGB(255, 50, 50),
+    local AboutSection = AboutTab:Section({Title = "Wezex Hub v4.4"})
+    AboutSection:Button({Title = "Destroy Window", Color = Color3.fromRGB(255, 50, 50),
         Callback = function() Window:Destroy() end})
 
     if State.esp then toggleESP() end
