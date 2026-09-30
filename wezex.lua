@@ -31,7 +31,7 @@ local State = {
     showFov = true,
 }
 
--- ====== ESP (Drawing API) ======
+-- ====== ESP (Drawing API — безопасный) ======
 local espDrawings, espConn = {}, nil
 
 local function clearESP()
@@ -137,7 +137,7 @@ local function toggleESP()
     end
 end
 
--- ====== AIMBOT (моментальный, без кнопки) ======
+-- ====== AIMBOT (моментальный) ======
 local aimbotConn = nil
 
 local fovCircle = Drawing.new("Circle")
@@ -193,7 +193,6 @@ local function updateAimbot()
     if not State.aimbot then return end
     local target = getTarget()
     if not target then return end
-    -- Моментальная наводка (без плавности)
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
 end
 
@@ -325,10 +324,10 @@ function createMainUI()
     -- ===== COMBAT =====
     local CombatTab = Window:Tab({Title = "Combat", Icon = "solar:sword-bold"})
     local CombatSection = CombatTab:Section({Title = "⚔️ Aimbot"})
-    CombatSection:Toggle({Title = "Aimbot", Desc = "Моментальная наводка, работает сразу", Value = State.aimbot,
+    CombatSection:Toggle({Title = "Aimbot", Desc = "Моментальная наводка", Value = State.aimbot,
         Callback = function(v) if v ~= State.aimbot then toggleAimbot() end end})
-    CombatSection:Slider({Title = "FOV (радиус захвата)", Desc = "Чем меньше — тем точнее",
-        Min = 50, Max = 1000, Value = State.aimbotFOV,
+    CombatSection:Slider({Title = "FOV (радиус круга)", Desc = "Размер круга захвата",
+        Min = 50, Max = 1500, Value = State.aimbotFOV,
         Callback = function(v) State.aimbotFOV = v end})
     CombatSection:Dropdown({Title = "Часть тела", Values = {"Head","HumanoidRootPart","UpperTorso","Torso"}, Value = State.aimbotPart,
         Callback = function(v) State.aimbotPart = v end})
@@ -348,7 +347,7 @@ function createMainUI()
     -- ===== VISUALS =====
     local VisualsTab = Window:Tab({Title = "Visuals", Icon = "solar:eye-bold"})
     local VisualsSection = VisualsTab:Section({Title = "👁️ ESP"})
-    VisualsSection:Toggle({Title = "ESP (Drawing)", Desc = "Безопасный ESP", Value = State.esp,
+    VisualsSection:Toggle({Title = "ESP (Drawing)", Desc = "Безопасный ESP — не банится", Value = State.esp,
         Callback = function(v) if v ~= State.esp then toggleESP() end end})
 
     -- ===== ABOUT =====
