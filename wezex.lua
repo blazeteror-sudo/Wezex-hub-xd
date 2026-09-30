@@ -38,9 +38,7 @@ local State = {
     aimbotKey = "E",
     aimbotHold = true,
     showFov = true,
-}
-
--- ====== ESP (SAFE — Drawing API) ======
+}-- ====== ESP (SAFE — Drawing API) ======
 local espDrawings = {}
 local espRenderConn = nil
 
@@ -110,9 +108,7 @@ local function createDrawingFor(player)
         hpBar = hpBar,
         hpBarBg = hpBarBg,
     }
-end
-
-local function removeDrawingFor(player)
+endlocal function removeDrawingFor(player)
     local data = espDrawings[player]
     if not data then return end
     if data.box and data.box.Remove then data.box:Remove() end
@@ -214,13 +210,10 @@ local function toggleESP()
         if espPlayerRemoving then espPlayerRemoving:Disconnect() espPlayerRemoving = nil end
         clearESP()
     end
-end
-
--- ====== AIMBOT (FOV-based, работает только в поле зрения) ======
+    end-- ====== AIMBOT (FOV-based, работает только в поле зрения) ======
 local aimbotHeld = false
 local aimbotRenderConn = nil
 
--- Визуализация FOV круга
 local fovCircle = Drawing.new("Circle")
 fovCircle.Thickness = 1
 fovCircle.NumSides = 60
@@ -264,7 +257,6 @@ local function getClosestTarget()
         if plr ~= LocalPlayer and plr.Character then
             local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
             if humanoid and humanoid.Health > 0 then
-                -- Пропускаем союзников
                 if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
                     continue
                 end
@@ -273,14 +265,12 @@ local function getClosestTarget()
                     or plr.Character:FindFirstChild("HumanoidRootPart")
 
                 if part then
-                    -- 1) Проверка что цель ВПЕРЕДИ (не за спиной)
                     local dirToTarget = (part.Position - camPos).Unit
                     local dot = cameraLook:Dot(dirToTarget)
                     if dot <= 0 then
                         continue
                     end
 
-                    -- 2) Проверка что цель в поле зрения
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
                     if not onScreen then
                         continue
@@ -291,12 +281,10 @@ local function getClosestTarget()
                         continue
                     end
 
-                    -- 3) Проверка видимости (рейкаст)
                     if not hasLineOfSight(part) then
                         continue
                     end
 
-                    -- 4) Берём ближайшую к прицелу
                     if screenDist < bestDist then
                         best = part
                         bestDist = screenDist
@@ -343,10 +331,7 @@ local function toggleAimbot()
     else
         stopAimbot()
     end
-end
-
--- Обработка нажатий
-UserInputService.InputBegan:Connect(function(input, gpe)
+        endUserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if State.aimbotHold and State.aimbot then
         if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
@@ -417,9 +402,7 @@ local function toggleInfJump()
             infJumpConnection = nil
         end
     end
-end
-
--- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
+            end-- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
@@ -510,9 +493,7 @@ local function showNativeKeyWindow()
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Return then checkKey() end
     end)
-end
-
--- ====== ОСНОВНОЙ GUI ======
+                end-- ====== ОСНОВНОЙ GUI ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
         Title = "Wezex Hub v4.3",
@@ -606,12 +587,12 @@ function createMainUI()
 
     CombatSection:Toggle({
         Title = "Показывать FOV круг",
-        Desc = "Визуальны        Callback = function(v)
+        Desc = "Визуальный круг захвата на экране",
+        Value = State.showFov,
+        Callback = function(v)
             State.showFov = v
         end,
-    })
-
-    -- ===== MOVEMENT =====
+    })    -- ===== MOVEMENT =====
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
