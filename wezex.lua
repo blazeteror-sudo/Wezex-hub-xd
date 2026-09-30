@@ -14,18 +14,12 @@ do
     local ok, result = pcall(function()
         return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
     end)
-    if ok then
-        WindUI = result
-    else
-        error("WindUI не загрузился")
-    end
+    if ok then WindUI = result else error("WindUI не загрузился") end
 end
 
--- ====== КЛЮЧ-СИСТЕМА ======
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
--- ====== СОСТОЯНИЯ ======
 local State = {
     esp = false,
     aimbot = false,
@@ -40,112 +34,68 @@ local State = {
     showFov = true,
 }
 
--- ====== ESP (SAFE — Drawing API) ======
-local espDrawings = {}
-local espRenderConn = nil
+-- ====== ESP (Drawing API) ======
+local espDrawings, espConn = {}, nil
 
 local function clearESP()
-    for _, data in pairs(espDrawings) do
-        if data.box and data.box.Remove then data.box:Remove() end
-        if data.name and data.name.Remove then data.name:Remove() end
-        if data.hpBar and data.hpBar.Remove then data.hpBar:Remove() end
-        if data.hpBarBg and data.hpBarBg.Remove then data.hpBarBg:Remove() end
-        if data.dist and data.dist.Remove then data.dist:Remove() end
+    for _, d in pairs(espDrawings) do
+        if d.box then d.box:Remove() end
+        if d.name then d.name:Remove() end
+        if d.hpBar then d.hpBar:Remove() end
+        if d.hpBarBg then d.hpBarBg:Remove() end
+        if d.dist then d.dist:Remove() end
     end
     espDrawings = {}
-    if espRenderConn then
-        espRenderConn:Disconnect()
-        espRenderConn = nil
-    end
+    if espConn then espConn:Disconnect() espConn = nil end
 end
 
-local function createDrawingFor(player)
-    if player == LocalPlayer then return end
-    if espDrawings[player] then return end
+local function createESP(plr)
+    if plr == LocalPlayer or espDrawings[plr] then return end
 
     local box = Drawing.new("Square")
-    box.Thickness = 1
-    box.Filled = false
-    box.Transparency = 1
-    box.Visible = false
-    box.Color = Color3.fromRGB(255, 50, 50)
-    box.ZIndex = 2
-
+    box.Thickness, box.Filled, box.Visible, box.ZIndex = 1, false, false, 2
     local name = Drawing.new("Text")
-    name.Size = 14
-    name.Center = true
-    name.Outline = true
+    name.Size, name.Center, name.Outline, name.Visible, name.ZIndex = 14, true, true, false, 3
     name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    name.Color = Color3.fromRGB(255, 255, 255)
-    name.Visible = false
-    name.ZIndex = 3
-
     local dist = Drawing.new("Text")
-    dist.Size = 12
-    dist.Center = true
-    dist.Outline = true
+    dist.Size, dist.Center, dist.Outline, dist.Visible, dist.ZIndex = 12, true, true, false, 3
     dist.OutlineColor = Color3.fromRGB(0, 0, 0)
     dist.Color = Color3.fromRGB(200, 200, 200)
-    dist.Visible = false
-    dist.ZIndex = 3
-
     local hpBarBg = Drawing.new("Square")
-    hpBarBg.Filled = true
-    hpBarBg.Transparency = 0.6
-    hpBarBg.Color = Color3.fromRGB(0, 0, 0)
-    hpBarBg.Visible = false
-    hpBarBg.ZIndex = 3
-
+    hpBarBg.Filled, hpBarBg.Transparency, hpBarBg.Color, hpBarBg.Visible, hpBarBg.ZIndex = true, 0.6, Color3.fromRGB(0, 0, 0), false, 3
     local hpBar = Drawing.new("Square")
-    hpBar.Filled = true
-    hpBar.Transparency = 1
-    hpBar.Color = Color3.fromRGB(0, 255, 0)
-    hpBar.Visible = false
-    hpBar.ZIndex = 4
+    hpBar.Filled, hpBar.Transparency, hpBar.Visible, hpBar.ZIndex = true, 1, false, 4
 
-    espDrawings[player] = {
-        box = box,
-        name = name,
-        dist = dist,
-        hpBar = hpBar,
-        hpBarBg = hpBarBg,
-    }
+    espDrawings[plr] = {box=box, name=name, dist=dist, hpBar=hpBar, hpBarBg=hpBarBg}
 end
 
-local function removeDrawingFor(player)
-    local data = espDrawings[player]
-    if not data then return end
-    if data.box and data.box.Remove then data.box:Remove() end
-    if data.name and data.name.Remove then data.name:Remove() end
-    if data.dist and data.dist.Remove then data.dist:Remove() end
-    if data.hpBar and data.hpBar.Remove then data.hpBar:Remove() end
-    if data.hpBarBg and data.hpBarBg.Remove then data.hpBarBg:Remove() end
-    espDrawings[player] = nil
+local function removeESP(plr)
+    local d = espDrawings[plr]
+    if not d then return end
+    d.box:Remove() d.name:Remove() d.dist:Remove() d.hpBar:Remove() d.hpBarBg:Remove()
+    espDrawings[plr] = nil
 end
 
 local function updateESP()
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            createDrawingFor(plr)
-        end
+        if plr ~= LocalPlayer then createESP(plr) end
     end
 
-    for plr, data in pairs(espDrawings) do
+    for plr, d in pairs(espDrawings) do
         local char = plr.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
         local head = char and char:FindFirstChild("Head")
 
-        if hrp and humanoid and humanoid.Health > 0 and head then
+        if hrp and hum and hum.Health > 0 and head then
             local rootPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
             local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
             local footPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
 
             if onScreen then
-                local height = math.abs(headPos.Y - footPos.Y)
-                local width = height * 0.6
-                local x = rootPos.X - width / 2
-                local y = headPos.Y
+                local h = math.abs(headPos.Y - footPos.Y)
+                local w = h * 0.6
+                local x, y = rootPos.X - w/2, headPos.Y
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
 
                 local color = Color3.fromRGB(255, 50, 50)
@@ -155,146 +105,85 @@ local function updateESP()
                     color = Color3.fromRGB(255, 255, 0)
                 end
 
-                data.box.Color = color
-                data.box.Size = Vector2.new(width, height)
-                data.box.Position = Vector2.new(x, y)
-                data.box.Visible = true
+                d.box.Color, d.box.Size, d.box.Position, d.box.Visible = color, Vector2.new(w, h), Vector2.new(x, y), true
+                d.name.Text, d.name.Position, d.name.Color, d.name.Visible = plr.Name, Vector2.new(rootPos.X, y - 30), color, true
+                d.dist.Text, d.dist.Position, d.dist.Visible = string.format("[%d studs]", math.floor(distance)), Vector2.new(rootPos.X, y - 16), true
 
-                data.name.Text = plr.Name
-                data.name.Position = Vector2.new(rootPos.X, y - 30)
-                data.name.Color = color
-                data.name.Visible = true
-
-                data.dist.Text = string.format("[%d studs]", math.floor(distance))
-                data.dist.Position = Vector2.new(rootPos.X, y - 16)
-                data.dist.Visible = true
-
-                local hpRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                local barW, barH = 3, height
-                local barX = x - barW - 3
-                data.hpBarBg.Size = Vector2.new(barW, barH)
-                data.hpBarBg.Position = Vector2.new(barX, y)
-                data.hpBarBg.Visible = true
-
-                data.hpBar.Size = Vector2.new(barW, barH * hpRatio)
-                data.hpBar.Position = Vector2.new(barX, y + barH * (1 - hpRatio))
-                data.hpBar.Color = Color3.fromRGB(255 * (1 - hpRatio), 255 * hpRatio, 0)
-                data.hpBar.Visible = true
+                local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                local barX = x - 6
+                d.hpBarBg.Size, d.hpBarBg.Position, d.hpBarBg.Visible = Vector2.new(3, h), Vector2.new(barX, y), true
+                d.hpBar.Size, d.hpBar.Position = Vector2.new(3, h * hp), Vector2.new(barX, y + h * (1 - hp))
+                d.hpBar.Color, d.hpBar.Visible = Color3.fromRGB(255 * (1 - hp), 255 * hp, 0), true
             else
-                data.box.Visible = false
-                data.name.Visible = false
-                data.dist.Visible = false
-                data.hpBar.Visible = false
-                data.hpBarBg.Visible = false
+                d.box.Visible, d.name.Visible, d.dist.Visible, d.hpBar.Visible, d.hpBarBg.Visible = false, false, false, false, false
             end
         else
-            data.box.Visible = false
-            data.name.Visible = false
-            data.dist.Visible = false
-            data.hpBar.Visible = false
-            data.hpBarBg.Visible = false
+            d.box.Visible, d.name.Visible, d.dist.Visible, d.hpBar.Visible, d.hpBarBg.Visible = false, false, false, false, false
         end
     end
 end
 
-local espPlayerAdded, espPlayerRemoving
+local espAdded, espRemoved
 
 local function toggleESP()
     State.esp = not State.esp
     if State.esp then
         clearESP()
-        for _, p in ipairs(Players:GetPlayers()) do
-            createDrawingFor(p)
-        end
-        espPlayerAdded = Players.PlayerAdded:Connect(createDrawingFor)
-        espPlayerRemoving = Players.PlayerRemoving:Connect(removeDrawingFor)
-        espRenderConn = RunService.RenderStepped:Connect(updateESP)
+        for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+        espAdded = Players.PlayerAdded:Connect(createESP)
+        espRemoved = Players.PlayerRemoving:Connect(removeESP)
+        espConn = RunService.RenderStepped:Connect(updateESP)
     else
-        if espPlayerAdded then espPlayerAdded:Disconnect() espPlayerAdded = nil end
-        if espPlayerRemoving then espPlayerRemoving:Disconnect() espPlayerRemoving = nil end
+        if espAdded then espAdded:Disconnect() end
+        if espRemoved then espRemoved:Disconnect() end
         clearESP()
     end
 end
 
 -- ====== AIMBOT (FOV-based) ======
-local aimbotHeld = false
-local aimbotRenderConn = nil
+local aimbotHeld, aimbotConn = false, nil
 
 local fovCircle = Drawing.new("Circle")
-fovCircle.Thickness = 1
-fovCircle.NumSides = 60
-fovCircle.Radius = State.aimbotFOV
-fovCircle.Filled = false
-fovCircle.Transparency = 0.5
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Visible = false
+fovCircle.Thickness, fovCircle.NumSides, fovCircle.Filled = 1, 60, false
+fovCircle.Transparency, fovCircle.Color, fovCircle.Visible = 0.5, Color3.fromRGB(255, 255, 255), false
 
 local function updateFovCircle()
     if State.aimbot and State.showFov then
-        fovCircle.Position = Camera.ViewportSize / 2
-        fovCircle.Radius = State.aimbotFOV
-        fovCircle.Visible = true
+        fovCircle.Position, fovCircle.Radius, fovCircle.Visible = Camera.ViewportSize / 2, State.aimbotFOV, true
     else
         fovCircle.Visible = false
     end
 end
 
-local function hasLineOfSight(targetPart)
+local function hasLOS(part)
     if not State.aimbotVisibleCheck then return true end
-    local origin = Camera.CFrame.Position
-    local dir = (targetPart.Position - origin)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = { LocalPlayer.Character }
-    local result = workspace:Raycast(origin, dir, params)
-    if result then
-        return result.Instance:IsDescendantOf(targetPart.Parent)
-    end
-    return true
+    local result = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
+    return not result or result.Instance:IsDescendantOf(part.Parent)
 end
 
-local function getClosestTarget()
+local function getTarget()
     local best, bestDist = nil, State.aimbotFOV
     local center = Camera.ViewportSize / 2
-    local cameraLook = Camera.CFrame.LookVector
+    local look = Camera.CFrame.LookVector
     local camPos = Camera.CFrame.Position
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
-            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
-                    continue
-                end
-
-                local part = plr.Character:FindFirstChild(State.aimbotPart)
-                    or plr.Character:FindFirstChild("HumanoidRootPart")
-
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then continue end
+                local part = plr.Character:FindFirstChild(State.aimbotPart) or plr.Character:FindFirstChild("HumanoidRootPart")
                 if part then
-                    local dirToTarget = (part.Position - camPos).Unit
-                    local dot = cameraLook:Dot(dirToTarget)
-                    if dot <= 0 then
-                        continue
-                    end
-
+                    if look:Dot((part.Position - camPos).Unit) <= 0 then continue end
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    if not onScreen then
-                        continue
-                    end
-
-                    local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if screenDist > State.aimbotFOV then
-                        continue
-                    end
-
-                    if not hasLineOfSight(part) then
-                        continue
-                    end
-
-                    if screenDist < bestDist then
-                        best = part
-                        bestDist = screenDist
-                    end
+                    if not onScreen then continue end
+                    local sd = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if sd > State.aimbotFOV then continue end
+                    if not hasLOS(part) then continue end
+                    if sd < bestDist then best, bestDist = part, sd end
                 end
             end
         end
@@ -304,181 +193,120 @@ end
 
 local function updateAimbot()
     updateFovCircle()
-
     if not State.aimbot then return end
     if State.aimbotHold and not aimbotHeld then return end
-
-    local target = getClosestTarget()
+    local target = getTarget()
     if not target then return end
-
-    local currentCF = Camera.CFrame
-    local targetCF = CFrame.new(currentCF.Position, target.Position)
-    local smooth = math.clamp(State.aimbotSmooth, 0.01, 1)
-    Camera.CFrame = currentCF:Lerp(targetCF, smooth)
-end
-
-local function startAimbot()
-    if aimbotRenderConn then aimbotRenderConn:Disconnect() end
-    aimbotRenderConn = RunService.RenderStepped:Connect(updateAimbot)
-end
-
-local function stopAimbot()
-    if aimbotRenderConn then
-        aimbotRenderConn:Disconnect()
-        aimbotRenderConn = nil
-    end
-    fovCircle.Visible = false
+    local cur = Camera.CFrame
+    local tgt = CFrame.new(cur.Position, target.Position)
+    Camera.CFrame = cur:Lerp(tgt, math.clamp(State.aimbotSmooth, 0.01, 1))
 end
 
 local function toggleAimbot()
     State.aimbot = not State.aimbot
     if State.aimbot then
-        startAimbot()
+        if aimbotConn then aimbotConn:Disconnect() end
+        aimbotConn = RunService.RenderStepped:Connect(updateAimbot)
     else
-        stopAimbot()
+        if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
+        fovCircle.Visible = false
     end
+end
+
+local function isAimbotKey(input)
+    return (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2)
+        or (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1)
+        or (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey])
 end
 
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if State.aimbotHold and State.aimbot then
-        if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
-           (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1) or
-           (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey]) then
-            aimbotHeld = true
-        end
-    end
+    if State.aimbotHold and State.aimbot and isAimbotKey(input) then aimbotHeld = true end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if State.aimbotHold and State.aimbot then
-        if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
-           (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1) or
-           (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey]) then
-            aimbotHeld = false
-        end
-    end
+    if State.aimbotHold and State.aimbot and isAimbotKey(input) then aimbotHeld = false end
 end)
 
 -- ====== NOCLIP ======
-local noclipConnection = nil
+local noclipConn = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
     if State.noclip then
-        if noclipConnection then noclipConnection:Disconnect() end
-        noclipConnection = RunService.Stepped:Connect(function()
+        if noclipConn then noclipConn:Disconnect() end
+        noclipConn = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
             if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
+                for _, p in ipairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = false end
                 end
             end
         end)
     else
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
+        if noclipConn then noclipConn:Disconnect() noclipConn = nil end
         local char = LocalPlayer.Character
         if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
             end
         end
     end
 end
 
 -- ====== INFINITY JUMP ======
-local infJumpConnection = nil
+local infJumpConn = nil
 local function toggleInfJump()
     State.infJump = not State.infJump
     if State.infJump then
-        if infJumpConnection then infJumpConnection:Disconnect() end
-        infJumpConnection = UserInputService.JumpRequest:Connect(function()
+        if infJumpConn then infJumpConn:Disconnect() end
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
                 char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
     else
-        if infJumpConnection then
-            infJumpConnection:Disconnect()
-            infJumpConnection = nil
-        end
+        if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
     end
 end
 
--- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
+-- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
 
     local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.Parent = CoreGui
-    keyGui.ResetOnSpawn = false
-    keyGui.IgnoreGuiInset = true
+    keyGui.Name, keyGui.Parent, keyGui.ResetOnSpawn, keyGui.IgnoreGuiInset = "KeySystem", CoreGui, false, true
 
     local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
-    panel.Parent = keyGui
+    panel.Size, panel.Position = UDim2.new(0, 260, 0, 150), UDim2.new(0.5, -130, 0.5, -75)
+    panel.BackgroundColor3, panel.BackgroundTransparency, panel.Parent = Color3.fromRGB(15, 12, 30), 0.15, keyGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
 
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 6)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBlack
-    title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
-    title.Text = "Wezex Hub"
-    title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = panel
+    title.Size, title.Position, title.BackgroundTransparency = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 6), 1
+    title.Font, title.TextSize, title.TextColor3 = Enum.Font.GothamBlack, 20, Color3.fromRGB(200, 150, 255)
+    title.Text, title.TextXAlignment, title.Parent = "Wezex Hub", Enum.TextXAlignment.Center, panel
 
     local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 18)
-    info.Position = UDim2.new(0, 0, 0, 42)
-    info.BackgroundTransparency = 1
-    info.Font = Enum.Font.Gotham
-    info.TextSize = 12
-    info.TextColor3 = Color3.fromRGB(160, 160, 200)
-    info.Text = "Введите ключ доступа"
-    info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = panel
+    info.Size, info.Position, info.BackgroundTransparency = UDim2.new(1, 0, 0, 18), UDim2.new(0, 0, 0, 42), 1
+    info.Font, info.TextSize, info.TextColor3 = Enum.Font.Gotham, 12, Color3.fromRGB(160, 160, 200)
+    info.Text, info.TextXAlignment, info.Parent = "Введите ключ доступа", Enum.TextXAlignment.Center, panel
 
     local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
-    keyBox.Font = Enum.Font.GothamBold
-    keyBox.TextSize = 16
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.Text = ""
-    keyBox.PlaceholderText = "Ключ"
-    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
+    keyBox.Size, keyBox.Position = UDim2.new(0.6, 0, 0, 34), UDim2.new(0.2, 0, 0, 66)
+    keyBox.BackgroundColor3, keyBox.BackgroundTransparency = Color3.fromRGB(30, 28, 50), 0.3
+    keyBox.Font, keyBox.TextSize, keyBox.TextColor3 = Enum.Font.GothamBold, 16, Color3.fromRGB(255, 255, 255)
+    keyBox.Text, keyBox.PlaceholderText, keyBox.PlaceholderColor3 = "", "Ключ", Color3.fromRGB(120, 120, 160)
+    keyBox.ClearTextOnFocus, keyBox.Parent = false, panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
-    local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
-    enterBtn.Text = "Войти"
-    enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
+    local btn = Instance.new("TextButton")
+    btn.Size, btn.Position = UDim2.new(0.35, 0, 0, 34), UDim2.new(0.325, 0, 0, 106)
+    btn.BackgroundColor3, btn.BackgroundTransparency = Color3.fromRGB(150, 100, 255), 0.2
+    btn.Text, btn.TextSize, btn.TextColor3, btn.Font = "Войти", 16, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold
+    btn.Parent = panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
 
     local function checkKey()
@@ -496,13 +324,8 @@ local function showNativeKeyWindow()
         end
     end
 
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
+    btn.MouseButton1Click:Connect(checkKey)
+    keyBox.FocusLost:Connect(function(enter) if enter then checkKey() end end)
 end
 
 -- ====== ОСНОВНОЙ GUI ======
@@ -519,97 +342,46 @@ function createMainUI()
         },
     })
 
-    -- ===== COMBAT =====
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Aimbot (FOV-based)",
-    })
+    local CombatTab = Window:Tab({Title = "Combat", Icon = "solar:sword-bold"})
+    local CombatSection = CombatTab:Section({Title = "⚔️ Aimbot"})
+    CombatSection:Toggle({Title = "Aimbot", Desc = "Наводка только в поле зрения", Value = State.aimbot,
+        Callback = function(v) if v ~= State.aimbot then toggleAimbot() end end})
+    CombatSection:Dropdown({Title = "Кнопка", Values = {"E","Q","F","C","V","MouseButton2","MouseButton1"}, Value = State.aimbotKey,
+        Callback = function(v) State.aimbotKey = v end})
+    CombatSection:Toggle({Title = "Удерживать", Value = State.aimbotHold,
+        Callback = function(v) State.aimbotHold = v end})
+    CombatSection:Slider({Title = "FOV", Min = 50, Max = 800, Value = State.aimbotFOV,
+        Callback = function(v) State.aimbotFOV = v end})
+    CombatSection:Slider({Title = "Smooth", Min = 0.05, Max = 1, Value = State.aimbotSmooth,
+        Callback = function(v) State.aimbotSmooth = v end})
+    CombatSection:Dropdown({Title = "Часть тела", Values = {"Head","HumanoidRootPart","UpperTorso","Torso"}, Value = State.aimbotPart,
+        Callback = function(v) State.aimbotPart = v end})
+    CombatSection:Toggle({Title = "Проверка видимости", Value = State.aimbotVisibleCheck,
+        Callback = function(v) State.aimbotVisibleCheck = v end})
+    CombatSection:Toggle({Title = "FOV круг", Value = State.showFov,
+        Callback = function(v) State.showFov = v end})
 
-    CombatSection:Toggle({
-        Title = "Aimbot",
-        Desc = "Наводится только на цели в поле зрения",
-        Value = State.aimbot,
-        Callback = function(v)
-            if v ~= State.aimbot then
-                toggleAimbot()
-            end
-        end,
-    })
+    local MovementTab = Window:Tab({Title = "Movement", Icon = "solar:running-bold"})
+    local MovementSection = MovementTab:Section({Title = "🏃 Movement"})
+    MovementSection:Toggle({Title = "Noclip", Value = State.noclip,
+        Callback = function(v) if v ~= State.noclip then toggleNoclip() end end})
+    MovementSection:Toggle({Title = "Infinity Jump", Value = State.infJump,
+        Callback = function(v) if v ~= State.infJump then toggleInfJump() end end})
 
-    CombatSection:Dropdown({
-        Title = "Кнопка активации",
-        Values = { "E", "Q", "F", "C", "V", "MouseButton2", "MouseButton1" },
-        Value = State.aimbotKey,
-        Callback = function(v)
-            State.aimbotKey = v
-        end,
-    })
+    local VisualsTab = Window:Tab({Title = "Visuals", Icon = "solar:eye-bold"})
+    local VisualsSection = VisualsTab:Section({Title = "👁️ ESP"})
+    VisualsSection:Toggle({Title = "ESP (Drawing)", Value = State.esp,
+        Callback = function(v) if v ~= State.esp then toggleESP() end end})
 
-    CombatSection:Toggle({
-        Title = "Удерживать кнопку",
-        Desc = "Вкл — держать, Выкл — переключение",
-        Value = State.aimbotHold,
-        Callback = function(v)
-            State.aimbotHold = v
-        end,
-    })
+    local AboutTab = Window:Tab({Title = "About", Icon = "solar:info-square-bold"})
+    AboutTab:Section({Title = "Wezex Hub v4.3"}):Button({Title = "Destroy Window", Color = Color3.fromRGB(255, 50, 50),
+        Callback = function() Window:Destroy() end})
 
-    CombatSection:Slider({
-        Title = "FOV (радиус захвата)",
-        Desc = "Чем меньше — тем точнее и незаметнее",
-        Min = 50,
-        Max = 800,
-        Value = State.aimbotFOV,
-        Callback = function(v)
-            State.aimbotFOV = v
-        end,
-    })
+    if State.esp then toggleESP() end
+    if State.aimbot then toggleAimbot() end
+    if State.noclip then toggleNoclip() end
+    if State.infJump then toggleInfJump() end
+end
 
-    CombatSection:Slider({
-        Title = "Smooth (плавность)",
-        Desc = "0.05 — мгновенно, 1 — медленно",
-        Min = 0.05,
-        Max = 1,
-        Value = State.aimbotSmooth,
-        Callback = function(v)
-            State.aimbotSmooth = v
-        end,
-    })
-
-    CombatSection:Dropdown({
-        Title = "Часть тела",
-        Values = { "Head", "HumanoidRootPart", "UpperTorso", "Torso" },
-        Value = State.aimbotPart,
-        Callback = function(v)
-            State.aimbotPart = v
-        end,
-    })
-
-    CombatSection:Toggle({
-        Title = "Проверка видимости",
-        Desc = "Наводиться только если цель видна (не через стены)",
-        Value = State.aimbotVisibleCheck,
-        Callback = function(v)
-            State.aimbotVisibleCheck = v
-        end,
-    })
-
-    CombatSection:Toggle({
-        Title = "Показывать FOV круг",
-        Desc = "Визуальный круг захвата на экране",
-        Value = State.showFov,
-        Callback = function(v)
-            State.showFov = v
-        end,
-    })
-
-    -- ===== MOVEMENT =====
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Mov
+-- ====== ЗАПУСК ======
+showNativeKeyWindow()
