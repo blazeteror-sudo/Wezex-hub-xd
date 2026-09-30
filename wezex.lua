@@ -25,22 +25,28 @@ local State = {
     aimbot = false,
     noclip = false,
     infJump = false,
+    airJump = false,
+    hitMarker = false,
     aimbotFOV = 250,
     aimbotPart = "Head",
     aimbotVisibleCheck = true,
     showFov = true,
+    aimbotHotkey = "RightShift",
+    showFloatBtn = false,
+    floatBtnPos = UDim2.new(0.85, 0, 0.5, 0),
 }
 
 -- ====== ESP (Drawing API — безопасный) ======
-local espDrawings, espConn = {}, nil
+local espDrawings = {}
+local espConn = nil
 
 local function clearESP()
     for _, d in pairs(espDrawings) do
-        if d.box then d.box:Remove() end
-        if d.name then d.name:Remove() end
-        if d.hpBar then d.hpBar:Remove() end
-        if d.hpBarBg then d.hpBarBg:Remove() end
-        if d.dist then d.dist:Remove() end
+        if d.box then pcall(function() d.box:Remove() end) end
+        if d.name then pcall(function() d.name:Remove() end) end
+        if d.hpBar then pcall(function() d.hpBar:Remove() end) end
+        if d.hpBarBg then pcall(function() d.hpBarBg:Remove() end) end
+        if d.dist then pcall(function() d.dist:Remove() end) end
     end
     espDrawings = {}
     if espConn then espConn:Disconnect() espConn = nil end
@@ -48,7 +54,6 @@ end
 
 local function createESP(plr)
     if plr == LocalPlayer or espDrawings[plr] then return end
-
     local box = Drawing.new("Square")
     box.Thickness, box.Filled, box.Visible, box.ZIndex = 1, false, false, 2
     local name = Drawing.new("Text")
@@ -62,14 +67,17 @@ local function createESP(plr)
     hpBarBg.Filled, hpBarBg.Transparency, hpBarBg.Color, hpBarBg.Visible, hpBarBg.ZIndex = true, 0.6, Color3.fromRGB(0, 0, 0), false, 3
     local hpBar = Drawing.new("Square")
     hpBar.Filled, hpBar.Transparency, hpBar.Visible, hpBar.ZIndex = true, 1, false, 4
-
     espDrawings[plr] = {box=box, name=name, dist=dist, hpBar=hpBar, hpBarBg=hpBarBg}
 end
 
 local function removeESP(plr)
     local d = espDrawings[plr]
     if not d then return end
-    d.box:Remove() d.name:Remove() d.dist:Remove() d.hpBar:Remove() d.hpBarBg:Remove()
+    pcall(function() d.box:Remove() end)
+    pcall(function() d.name:Remove() end)
+    pcall(function() d.dist:Remove() end)
+    pcall(function() d.hpBar:Remove() end)
+    pcall(function() d.hpBarBg:Remove() end)
     espDrawings[plr] = nil
 end
 
@@ -77,35 +85,24 @@ local function updateESP()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then createESP(plr) end
     end
-
     for plr, d in pairs(espDrawings) do
         local char = plr.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local head = char and char:FindFirstChild("Head")
-
         if hrp and hum and hum.Health > 0 and head then
             local rootPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
             local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
             local footPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-
             if onScreen then
                 local h = math.abs(headPos.Y - footPos.Y)
                 local w = h * 0.6
                 local x, y = rootPos.X - w/2, headPos.Y
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
-
                 local color = Color3.fromRGB(255, 50, 50)
-                if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
-                    color = Color3.fromRGB(0, 255, 0)
-                elseif not plr.Team or not LocalPlayer.Team then
-                    color = Color3.fromRGB(255, 255, 0)
-                end
-
                 d.box.Color, d.box.Size, d.box.Position, d.box.Visible = color, Vector2.new(w, h), Vector2.new(x, y), true
                 d.name.Text, d.name.Position, d.name.Color, d.name.Visible = plr.Name, Vector2.new(rootPos.X, y - 30), color, true
                 d.dist.Text, d.dist.Position, d.dist.Visible = string.format("[%d studs]", math.floor(distance)), Vector2.new(rootPos.X, y - 16), true
-
                 local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                 local barX = x - 6
                 d.hpBarBg.Size, d.hpBarBg.Position, d.hpBarBg.Visible = Vector2.new(3, h), Vector2.new(barX, y), true
@@ -137,7 +134,7 @@ local function toggleESP()
     end
 end
 
--- ====== AIMBOT (моментальный) ======
+-- ====== AIMBOT ======
 local aimbotConn = nil
 
 local fovCircle = Drawing.new("Circle")
@@ -166,7 +163,6 @@ local function getTarget()
     local center = Camera.ViewportSize / 2
     local look = Camera.CFrame.LookVector
     local camPos = Camera.CFrame.Position
-
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
             local hum = plr.Character:FindFirstChildOfClass("Humanoid")
@@ -204,6 +200,158 @@ local function toggleAimbot()
     else
         if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
         fovCircle.Visible = false
+    end
+    -- Обновляем текст плавающей кнопки
+    if _G.WezexFloatBtn then
+        _G.WezexFloatBtn.Text = "AIM: " .. (State.aimbot and "ON" or "OFF")
+        _G.WezexFloatBtn.BackgroundColor3 = State.aimbot and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    end
+    -- Обновляем тумблер в GUI если открыт
+    if _G.WezexAimbotToggle then
+        pcall(function() _G.WezexAimbotToggle:Set(State.aimbot) end)
+    end
+end
+
+-- ====== ПЛАВАЮЩАЯ КНОПКА ======
+local floatBtn = nil
+local floatDragging = false
+local floatDragStart, floatStartPos
+
+local function createFloatButton()
+    if floatBtn then floatBtn:Destroy() end
+
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "WezexFloatBtn"
+    sg.ResetOnSpawn = false
+    sg.IgnoreGuiInset = true
+    sg.Parent = CoreGui
+
+    local btn = Instance.new("TextButton")
+    btn.Name = "Btn"
+    btn.Size = UDim2.new(0, 70, 0, 30)
+    btn.Position = State.floatBtnPos
+    btn.BackgroundColor3 = State.aimbot and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    btn.BackgroundTransparency = 0.15
+    btn.Text = "AIM: " .. (State.aimbot and "ON" or "OFF")
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Active = true
+    btn.Draggable = false
+    btn.Parent = sg
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke").Color = Color3.fromRGB(255, 255, 255)
+    Instance.new("UIStroke").Thickness = 1
+
+    floatBtn = btn
+    _G.WezexFloatBtn = btn
+
+    btn.MouseButton1Down:Connect(function()
+        floatDragging = false
+        floatDragStart = UserInputService:GetMouseLocation()
+        floatStartPos = btn.Position
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        if not floatDragging then
+            toggleAimbot()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and floatDragStart and floatStartPos then
+            local current = UserInputService:GetMouseLocation()
+            local delta = current - floatDragStart
+            if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
+                floatDragging = true
+                btn.Position = UDim2.new(0, floatStartPos.X.Offset + delta.X, 0, floatStartPos.Y.Offset + delta.Y)
+                State.floatBtnPos = btn.Position
+            end
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            floatDragStart, floatStartPos = nil, nil
+            task.delay(0.1, function() floatDragging = false end)
+        end
+    end)
+end
+
+local function removeFloatButton()
+    if floatBtn then floatBtn.Parent:Destroy() floatBtn = nil _G.WezexFloatBtn = nil end
+end
+
+local function toggleFloatBtn()
+    State.showFloatBtn = not State.showFloatBtn
+    if State.showFloatBtn then
+        createFloatButton()
+    else
+        removeFloatButton()
+    end
+end
+
+-- ====== HOTKEY ======
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    local key = State.aimbotHotkey
+    if key and key ~= "" and key ~= "None" then
+        if input.KeyCode == Enum.KeyCode[key] then
+            toggleAimbot()
+        end
+    end
+end)
+
+-- ====== HIT MARKER ======
+local hitMarkerConns = {}
+
+local function toggleHitMarker()
+    State.hitMarker = not State.hitMarker
+    if State.hitMarker then
+        for _, c in ipairs(hitMarkerConns) do c:Disconnect() end
+        hitMarkerConns = {}
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    plr:SetAttribute("WezexLastHP", hum.Health)
+                    local conn = hum.HealthChanged:Connect(function(newHP)
+                        local lastHP = plr:GetAttribute("WezexLastHP") or newHP
+                        if newHP < lastHP then
+                            local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local particle = Instance.new("Part")
+                                particle.Size = Vector3.new(0.5, 0.5, 0.5)
+                                particle.Transparency = 1
+                                particle.Anchored = true
+                                particle.CanCollide = false
+                                particle.CFrame = hrp.CFrame
+                                particle.Parent = workspace
+                                local emitter = Instance.new("ParticleEmitter")
+                                emitter.Texture = "rbxassetid://243660364"
+                                emitter.Color = ColorSequence.new(Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 150, 50))
+                                emitter.Size = NumberSequence.new(1, 0)
+                                emitter.Lifetime = NumberRange.new(0.3, 0.5)
+                                emitter.Speed = NumberRange.new(5, 10)
+                                emitter.SpreadAngle = Vector2.new(360, 360)
+                                emitter.Rate = 80
+                                emitter.Parent = particle
+                                task.delay(0.1, function()
+                                    emitter.Enabled = false
+                                    task.delay(0.6, function() pcall(function() particle:Destroy() end) end)
+                                end)
+                            end
+                        end
+                        plr:SetAttribute("WezexLastHP", newHP)
+                    end)
+                    table.insert(hitMarkerConns, conn)
+                end
+            end
+        end
+    else
+        for _, c in ipairs(hitMarkerConns) do c:Disconnect() end
+        hitMarkerConns = {}
     end
 end
 
@@ -249,30 +397,61 @@ local function toggleInfJump()
     end
 end
 
+-- ====== AIR JUMP ======
+local airJumpConn = nil
+local airJumpsLeft = 0
+local MAX_AIR_JUMPS = 3
+
+local function toggleAirJump()
+    State.airJump = not State.airJump
+    if State.airJump then
+        if airJumpConn then airJumpConn:Disconnect() end
+        airJumpsLeft = MAX_AIR_JUMPS
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.StateChanged:Connect(function(_, new)
+                    if new == Enum.HumanoidStateType.Landed or new == Enum.HumanoidStateType.Running then
+                        airJumpsLeft = MAX_AIR_JUMPS
+                    end
+                end)
+            end
+        end
+        airJumpConn = UserInputService.JumpRequest:Connect(function()
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum and hum:GetState() == Enum.HumanoidStateType.Freefall and airJumpsLeft > 0 then
+                    airJumpsLeft = airJumpsLeft - 1
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+        end)
+    else
+        if airJumpConn then airJumpConn:Disconnect() airJumpConn = nil end
+    end
+end
+
 -- ====== КЛЮЧ-СИСТЕМА ======
 local function showNativeKeyWindow()
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
-
     local keyGui = Instance.new("ScreenGui")
     keyGui.Name, keyGui.Parent, keyGui.ResetOnSpawn, keyGui.IgnoreGuiInset = "KeySystem", CoreGui, false, true
-
     local panel = Instance.new("Frame")
     panel.Size, panel.Position = UDim2.new(0, 260, 0, 150), UDim2.new(0.5, -130, 0.5, -75)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.Parent = Color3.fromRGB(15, 12, 30), 0.15, keyGui
     Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
-
     local title = Instance.new("TextLabel")
     title.Size, title.Position, title.BackgroundTransparency = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 6), 1
     title.Font, title.TextSize, title.TextColor3 = Enum.Font.GothamBlack, 20, Color3.fromRGB(200, 150, 255)
     title.Text, title.TextXAlignment, title.Parent = "Wezex Hub", Enum.TextXAlignment.Center, panel
-
     local info = Instance.new("TextLabel")
     info.Size, info.Position, info.BackgroundTransparency = UDim2.new(1, 0, 0, 18), UDim2.new(0, 0, 0, 42), 1
     info.Font, info.TextSize, info.TextColor3 = Enum.Font.Gotham, 12, Color3.fromRGB(160, 160, 200)
     info.Text, info.TextXAlignment, info.Parent = "Введите ключ доступа", Enum.TextXAlignment.Center, panel
-
     local keyBox = Instance.new("TextBox")
     keyBox.Size, keyBox.Position = UDim2.new(0.6, 0, 0, 34), UDim2.new(0.2, 0, 0, 66)
     keyBox.BackgroundColor3, keyBox.BackgroundTransparency = Color3.fromRGB(30, 28, 50), 0.3
@@ -280,14 +459,12 @@ local function showNativeKeyWindow()
     keyBox.Text, keyBox.PlaceholderText, keyBox.PlaceholderColor3 = "", "Ключ", Color3.fromRGB(120, 120, 160)
     keyBox.ClearTextOnFocus, keyBox.Parent = false, panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
     local btn = Instance.new("TextButton")
     btn.Size, btn.Position = UDim2.new(0.35, 0, 0, 34), UDim2.new(0.325, 0, 0, 106)
     btn.BackgroundColor3, btn.BackgroundTransparency = Color3.fromRGB(150, 100, 255), 0.2
     btn.Text, btn.TextSize, btn.TextColor3, btn.Font = "Войти", 16, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold
     btn.Parent = panel
     Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
-
     local function checkKey()
         if keyBox.Text == CORRECT_KEY then
             keyVerified = true
@@ -302,65 +479,5 @@ local function showNativeKeyWindow()
             keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
         end
     end
-
     btn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enter) if enter then checkKey() end end)
-end
-
--- ====== ОСНОВНОЙ GUI ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.4",
-        Folder = "WezexHub",
-        Icon = "solar:folder-2-bold-duotone",
-        OpenButton = {
-            Title = "Wezex Hub",
-            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-            Draggable = true,
-            Scale = 0.5,
-        },
-    })
-
-    -- ===== COMBAT =====
-    local CombatTab = Window:Tab({Title = "Combat", Icon = "solar:sword-bold"})
-    local CombatSection = CombatTab:Section({Title = "⚔️ Aimbot"})
-    CombatSection:Toggle({Title = "Aimbot", Desc = "Моментальная наводка", Value = State.aimbot,
-        Callback = function(v) if v ~= State.aimbot then toggleAimbot() end end})
-    CombatSection:Slider({Title = "FOV (радиус круга)", Desc = "Размер круга захвата",
-        Min = 50, Max = 1500, Value = State.aimbotFOV,
-        Callback = function(v) State.aimbotFOV = v end})
-    CombatSection:Dropdown({Title = "Часть тела", Values = {"Head","HumanoidRootPart","UpperTorso","Torso"}, Value = State.aimbotPart,
-        Callback = function(v) State.aimbotPart = v end})
-    CombatSection:Toggle({Title = "Проверка видимости", Value = State.aimbotVisibleCheck,
-        Callback = function(v) State.aimbotVisibleCheck = v end})
-    CombatSection:Toggle({Title = "Показывать FOV круг", Value = State.showFov,
-        Callback = function(v) State.showFov = v end})
-
-    -- ===== MOVEMENT =====
-    local MovementTab = Window:Tab({Title = "Movement", Icon = "solar:running-bold"})
-    local MovementSection = MovementTab:Section({Title = "🏃 Movement"})
-    MovementSection:Toggle({Title = "Noclip", Desc = "Проход сквозь стены", Value = State.noclip,
-        Callback = function(v) if v ~= State.noclip then toggleNoclip() end end})
-    MovementSection:Toggle({Title = "Infinity Jump", Desc = "Бесконечные прыжки", Value = State.infJump,
-        Callback = function(v) if v ~= State.infJump then toggleInfJump() end end})
-
-    -- ===== VISUALS =====
-    local VisualsTab = Window:Tab({Title = "Visuals", Icon = "solar:eye-bold"})
-    local VisualsSection = VisualsTab:Section({Title = "👁️ ESP"})
-    VisualsSection:Toggle({Title = "ESP (Drawing)", Desc = "Безопасный ESP — не банится", Value = State.esp,
-        Callback = function(v) if v ~= State.esp then toggleESP() end end})
-
-    -- ===== ABOUT =====
-    local AboutTab = Window:Tab({Title = "About", Icon = "solar:info-square-bold"})
-    local AboutSection = AboutTab:Section({Title = "Wezex Hub v4.4"})
-    AboutSection:Button({Title = "Destroy Window", Color = Color3.fromRGB(255, 50, 50),
-        Callback = function() Window:Destroy() end})
-
-    if State.esp then toggleESP() end
-    if State.aimbot then toggleAimbot() end
-    if State.noclip then toggleNoclip() end
-    if State.infJump then toggleInfJump() end
-end
-
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+    keyBox.Focu
