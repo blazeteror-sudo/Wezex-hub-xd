@@ -1,84 +1,54 @@
--- WEZEX HUB (WINDUI + NATIVE KEY SYSTEM + AIMBOT + DRAWING ESP)
+-- WEZEX HUB v4.2 (COMPACT)
 -- КЛЮЧ: 38399923
 
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local CG = game:GetService("CoreGui")
+local PL = game:GetService("Players")
+local LP = PL.LocalPlayer
+local CAM = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local LGT = game:GetService("Lighting")
 
--- ====== ЗАГРУЗКА WINDUI ======
-local WindUI
-do
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-    end)
-    if ok and type(result) == "table" then
-        WindUI = result
-    else
-        error("WindUI не загрузился")
-    end
-end
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
--- ====== КЛЮЧ-СИСТЕМА ======
-local CORRECT_KEY = "38399923"
-local keyVerified = false
+local KEY = "38399923"
+local S = { esp=false, aim=false, noclip=false, infjump=false, fov=250, part="Head", vis=true }
+local V = {}
 
--- ====== СОСТОЯНИЯ ======
-local State = {
-    esp = false,
-    aimbot = false,
-    noclip = false,
-    infJump = false,
-    fov = 250,
-    part = "Head",
-    visCheck = true,
-}
-
--- ====== AIMBOT ======
+-- ===== AIMBOT =====
 local aimConn, fovC = nil, Drawing.new("Circle")
 fovC.Thickness, fovC.NumSides, fovC.Filled = 1, 60, false
-fovC.Transparency, fovC.Color, fovC.Visible = 0.5, Color3.new(1, 1, 1), false
+fovC.Transparency, fovC.Color, fovC.Visible = 0.5, Color3.new(1,1,1), false
 
 local function updFov()
-    if State.aimbot then
-        fovC.Position = Camera.ViewportSize / 2
-        fovC.Radius = State.fov
-        fovC.Visible = true
-    else
-        fovC.Visible = false
-    end
+    fovC.Visible = S.aim
+    if S.aim then fovC.Position = CAM.ViewportSize/2 fovC.Radius = S.fov end
 end
 
-local function hasLOS(part)
-    if not State.visCheck then return true end
+local function hasLOS(p)
+    if not S.vis then return true end
     local rp = RaycastParams.new()
     rp.FilterType = Enum.RaycastFilterType.Exclude
-    rp.FilterDescendantsInstances = { LocalPlayer.Character }
-    local r = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, rp)
-    return not r or r.Instance:IsDescendantOf(part.Parent)
+    rp.FilterDescendantsInstances = { LP.Character }
+    local r = workspace:Raycast(CAM.CFrame.Position, p.Position - CAM.CFrame.Position, rp)
+    return not r or r.Instance:IsDescendantOf(p.Parent)
 end
 
 local function getTgt()
-    local best, bd = nil, State.fov
-    local c = Camera.ViewportSize / 2
-    local lk = Camera.CFrame.LookVector
-    local cp = Camera.CFrame.Position
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
+    local best, bd = nil, S.fov
+    local c, lk, cp = CAM.ViewportSize/2, CAM.CFrame.LookVector, CAM.CFrame.Position
+    for _, p in ipairs(PL:GetPlayers()) do
+        if p ~= LP and p.Character then
             local h = p.Character:FindFirstChildOfClass("Humanoid")
             if h and h.Health > 0 then
-                if p.Team and LocalPlayer.Team and p.Team == LocalPlayer.Team then continue end
-                local pt = p.Character:FindFirstChild(State.part) or p.Character:FindFirstChild("HumanoidRootPart")
-                if pt then
-                    if lk:Dot((pt.Position - cp).Unit) <= 0 then continue end
-                    local pos, os = Camera:WorldToViewportPoint(pt.Position)
-                    if not os then continue end
-                    local sd = (Vector2.new(pos.X, pos.Y) - c).Magnitude
-                    if sd > State.fov then continue end
-                    if not hasLOS(pt) then continue end
-                    if sd < bd then best, bd = pt, sd end
+                if p.Team and LP.Team and p.Team == LP.Team then continue end
+                local pt = p.Character:FindFirstChild(S.part) or p.Character:FindFirstChild("HumanoidRootPart")
+                if pt and lk:Dot((pt.Position - cp).Unit) > 0 then
+                    local pos, os = CAM:WorldToViewportPoint(pt.Position)
+                    if os then
+                        local d = (Vector2.new(pos.X, pos.Y) - c).Magnitude
+                        if d <= S.fov and d < bd and hasLOS(pt) then best, bd = pt, d end
+                    end
                 end
             end
         end
@@ -88,43 +58,40 @@ end
 
 local function updAim()
     updFov()
-    if not State.aimbot then return end
-    local t = getTgt()
-    if t then
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, t.Position)
+    if S.aim then
+        local t = getTgt()
+        if t then CAM.CFrame = CFrame.new(CAM.CFrame.Position, t.Position) end
     end
 end
 
 local function toggleAim()
-    State.aimbot = not State.aimbot
-    if State.aimbot then
+    S.aim = not S.aim
+    if S.aim then
         if aimConn then aimConn:Disconnect() end
-        aimConn = RunService.RenderStepped:Connect(updAim)
+        aimConn = RS.RenderStepped:Connect(updAim)
     else
         if aimConn then aimConn:Disconnect() aimConn = nil end
         fovC.Visible = false
     end
 end
 
--- ====== ESP (Drawing API — НЕ БАНИТСЯ) ======
-local espD, espC, espA, espR = {}, nil, nil, nil
+-- ===== ESP DRAWING =====
+local E, eC, eA, eR = {}, nil, nil, nil
 
 local function clearESP()
-    for _, d in pairs(espD) do
-        if d.box then pcall(function() d.box:Remove() end) end
-        if d.name then pcall(function() d.name:Remove() end) end
-        if d.dist then pcall(function() d.dist:Remove() end) end
-        if d.hp then pcall(function() d.hp:Remove() end) end
-        if d.hpBg then pcall(function() d.hpBg:Remove() end) end
+    for _, d in pairs(E) do
+        for _, k in ipairs({"box","name","dist","hp","hpBg"}) do
+            if d[k] then pcall(function() d[k]:Remove() end) end
+        end
     end
-    espD = {}
-    if espC then espC:Disconnect() espC = nil end
-    if espA then espA:Disconnect() espA = nil end
-    if espR then espR:Disconnect() espR = nil end
+    E = {}
+    if eC then eC:Disconnect() eC = nil end
+    if eA then eA:Disconnect() eA = nil end
+    if eR then eR:Disconnect() eR = nil end
 end
 
 local function mkESP(p)
-    if p == LocalPlayer or espD[p] then return end
+    if p == LP or E[p] then return end
     local box = Drawing.new("Square")
     box.Thickness, box.Filled, box.Visible, box.ZIndex = 1, false, false, 2
     local nm = Drawing.new("Text")
@@ -132,358 +99,328 @@ local function mkESP(p)
     nm.OutlineColor = Color3.new()
     local ds = Drawing.new("Text")
     ds.Size, ds.Center, ds.Outline, ds.Visible, ds.ZIndex = 12, true, true, false, 3
-    ds.OutlineColor = Color3.new()
-    ds.Color = Color3.fromRGB(200, 200, 200)
+    ds.OutlineColor, ds.Color = Color3.new(), Color3.fromRGB(200,200,200)
     local hb = Drawing.new("Square")
     hb.Filled, hb.Transparency, hb.Color, hb.Visible, hb.ZIndex = true, 0.6, Color3.new(), false, 3
     local hp = Drawing.new("Square")
     hp.Filled, hp.Transparency, hp.Visible, hp.ZIndex = true, 1, false, 4
-    espD[p] = {box=box, name=nm, dist=ds, hp=hp, hpBg=hb}
+    E[p] = {box=box, name=nm, dist=ds, hp=hp, hpBg=hb}
 end
 
 local function rmESP(p)
-    local d = espD[p]
+    local d = E[p]
     if not d then return end
-    pcall(function() d.box:Remove() end)
-    pcall(function() d.name:Remove() end)
-    pcall(function() d.dist:Remove() end)
-    pcall(function() d.hp:Remove() end)
-    pcall(function() d.hpBg:Remove() end)
-    espD[p] = nil
+    for _, k in ipairs({"box","name","dist","hp","hpBg"}) do
+        if d[k] then pcall(function() d[k]:Remove() end) end
+    end
+    E[p] = nil
+end
+
+local function hideAll(d)
+    for _, k in ipairs({"box","name","dist","hp","hpBg"}) do d[k].Visible = false end
 end
 
 local function updESP()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then mkESP(p) end
-    end
-    for p, d in pairs(espD) do
+    for _, p in ipairs(PL:GetPlayers()) do if p ~= LP then mkESP(p) end end
+    for p, d in pairs(E) do
         local c = p.Character
         local hrp = c and c:FindFirstChild("HumanoidRootPart")
         local h = c and c:FindFirstChildOfClass("Humanoid")
         local hd = c and c:FindFirstChild("Head")
         if hrp and h and h.Health > 0 and hd then
-            local rp, os = Camera:WorldToViewportPoint(hrp.Position)
-            local hp2 = Camera:WorldToViewportPoint(hd.Position + Vector3.new(0, 0.5, 0))
-            local fp = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+            local rp, os = CAM:WorldToViewportPoint(hrp.Position)
+            local hp2 = CAM:WorldToViewportPoint(hd.Position + Vector3.new(0,0.5,0))
+            local fp = CAM:WorldToViewportPoint(hrp.Position - Vector3.new(0,3,0))
             if os then
                 local H = math.abs(hp2.Y - fp.Y)
                 local W = H * 0.6
                 local x, y = rp.X - W/2, hp2.Y
-                local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
-                local col = Color3.fromRGB(255, 50, 50)
-                d.box.Color, d.box.Size, d.box.Position, d.box.Visible = col, Vector2.new(W, H), Vector2.new(x, y), true
-                d.name.Text, d.name.Position, d.name.Color, d.name.Visible = p.Name, Vector2.new(rp.X, y - 30), col, true
-                d.dist.Text, d.dist.Position, d.dist.Visible = string.format("[%d]", math.floor(dist)), Vector2.new(rp.X, y - 16), true
-                local r = math.clamp(h.Health / h.MaxHealth, 0, 1)
+                local dist = (CAM.CFrame.Position - hrp.Position).Magnitude
+                local col = Color3.fromRGB(255,50,50)
+                d.box.Color, d.box.Size, d.box.Position, d.box.Visible = col, Vector2.new(W,H), Vector2.new(x,y), true
+                d.name.Text, d.name.Position, d.name.Color, d.name.Visible = p.Name, Vector2.new(rp.X, y-30), col, true
+                d.dist.Text, d.dist.Position, d.dist.Visible = "["..math.floor(dist).."]", Vector2.new(rp.X, y-16), true
+                local r = math.clamp(h.Health/h.MaxHealth, 0, 1)
                 local bx = x - 6
-                d.hpBg.Size, d.hpBg.Position, d.hpBg.Visible = Vector2.new(3, H), Vector2.new(bx, y), true
-                d.hp.Size, d.hp.Position = Vector2.new(3, H * r), Vector2.new(bx, y + H * (1 - r))
-                d.hp.Color, d.hp.Visible = Color3.fromRGB(255 * (1 - r), 255 * r, 0), true
-            else
-                d.box.Visible, d.name.Visible, d.dist.Visible, d.hp.Visible, d.hpBg.Visible = false, false, false, false, false
-            end
-        else
-            d.box.Visible, d.name.Visible, d.dist.Visible, d.hp.Visible, d.hpBg.Visible = false, false, false, false, false
-        end
+                d.hpBg.Size, d.hpBg.Position, d.hpBg.Visible = Vector2.new(3,H), Vector2.new(bx,y), true
+                d.hp.Size, d.hp.Position = Vector2.new(3,H*r), Vector2.new(bx, y+H*(1-r))
+                d.hp.Color, d.hp.Visible = Color3.fromRGB(255*(1-r), 255*r, 0), true
+            else hideAll(d) end
+        else hideAll(d) end
     end
 end
 
 local function toggleESP()
-    State.esp = not State.esp
-    if State.esp then
+    S.esp = not S.esp
+    if S.esp then
         clearESP()
-        for _, p in ipairs(Players:GetPlayers()) do mkESP(p) end
-        espA = Players.PlayerAdded:Connect(mkESP)
-        espR = Players.PlayerRemoving:Connect(rmESP)
-        espC = RunService.RenderStepped:Connect(updESP)
-    else
-        clearESP()
-    end
+        for _, p in ipairs(PL:GetPlayers()) do mkESP(p) end
+        eA = PL.PlayerAdded:Connect(mkESP)
+        eR = PL.PlayerRemoving:Connect(rmESP)
+        eC = RS.RenderStepped:Connect(updESP)
+    else clearESP() end
 end
 
--- ====== NOCLIP ======
-local noclipConnection = nil
-local originalCollide = {}
-
+-- ===== NOCLIP =====
+local ncConn, origCol = nil, {}
 local function toggleNoclip()
-    State.noclip = not State.noclip
-    if State.noclip then
-        if noclipConnection then noclipConnection:Disconnect() end
-        noclipConnection = RunService.Stepped:Connect(function()
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        if originalCollide[part] == nil then
-                            originalCollide[part] = part.CanCollide
-                        end
-                        part.CanCollide = false
-                    end
+    S.noclip = not S.noclip
+    if S.noclip then
+        if ncConn then ncConn:Disconnect() end
+        ncConn = RS.Stepped:Connect(function()
+            local c = LP.Character
+            if c then for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    if origCol[p] == nil then origCol[p] = p.CanCollide end
+                    p.CanCollide = false
                 end
-            end
+            end end
         end)
     else
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = originalCollide[part] ~= nil and originalCollide[part] or false
-                end
-            end
-        end
-        originalCollide = {}
+        if ncConn then ncConn:Disconnect() ncConn = nil end
+        local c = LP.Character
+        if c then for _, p in ipairs(c:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = origCol[p] ~= nil and origCol[p] or false end
+        end end
+        origCol = {}
     end
 end
 
--- ====== INFINITY JUMP ======
-local infJumpConnection = nil
+-- ===== INF JUMP =====
+local ijConn
 local function toggleInfJump()
-    State.infJump = not State.infJump
-    if State.infJump then
-        if infJumpConnection then infJumpConnection:Disconnect() end
-        infJumpConnection = UserInputService.JumpRequest:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChildOfClass("Humanoid") then
-                char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    S.infJump = not S.infJump
+    if S.infJump then
+        if ijConn then ijConn:Disconnect() end
+        ijConn = UIS.JumpRequest:Connect(function()
+            local c = LP.Character
+            if c and c:FindFirstChildOfClass("Humanoid") then
+                c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
     else
-        if infJumpConnection then
-            infJumpConnection:Disconnect()
-            infJumpConnection = nil
-        end
+        if ijConn then ijConn:Disconnect() ijConn = nil end
     end
 end
 
--- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
-local function showNativeKeyWindow()
-    pcall(function()
-        if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
-    end)
-
-    local keyGui = Instance.new("ScreenGui")
-    keyGui.Name = "KeySystem"
-    keyGui.ResetOnSpawn = false
-    keyGui.IgnoreGuiInset = true
-    local ok = pcall(function() keyGui.Parent = CoreGui end)
-    if not ok then
-        keyGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- ===== CLEAR VISUALS =====
+local function clearVis()
+    for _, k in ipairs({"sparklesInst","trailInst","fireInst","fireAtt","snowInst","snowAtt"}) do
+        if V[k] then V[k]:Destroy() V[k] = nil end
     end
+    if V.amb then
+        LGT.Ambient = V.oA or Color3.fromRGB(70,70,70)
+        LGT.OutdoorAmbient = V.oO or Color3.fromRGB(128,128,128)
+        LGT.Brightness = V.oB or 2
+    end
+    if V.fog then
+        LGT.FogEnd = V.oFE or 100000
+        LGT.FogColor = V.oFC or Color3.fromRGB(192,192,192)
+    end
+    local sky = LGT:FindFirstChildOfClass("Sky")
+    if sky then sky:Destroy() end
+end
 
-    local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 260, 0, 150)
-    panel.Position = UDim2.new(0.5, -130, 0.5, -75)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 12, 30)
-    panel.BackgroundTransparency = 0.15
-    panel.Parent = keyGui
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 16)
+-- ===== KEY UI =====
+local function showKey()
+    pcall(function() if CG:FindFirstChild("KeySystem") then CG.KeySystem:Destroy() end end)
+    local g = Instance.new("ScreenGui")
+    g.Name, g.ResetOnSpawn, g.IgnoreGuiInset = "KeySystem", false, true
+    if not pcall(function() g.Parent = CG end) then g.Parent = LP:WaitForChild("PlayerGui") end
 
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 6)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBlack
-    title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(200, 150, 255)
-    title.Text = "Wezex Hub"
-    title.TextXAlignment = Enum.TextXAlignment.Center
-    title.Parent = panel
+    local f = Instance.new("Frame")
+    f.Size, f.Position, f.BackgroundColor3, f.BackgroundTransparency = UDim2.new(0,260,0,150), UDim2.new(0.5,-130,0.5,-75), Color3.fromRGB(15,12,30), 0.15
+    f.Parent = g
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,16)
 
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 18)
-    info.Position = UDim2.new(0, 0, 0, 42)
-    info.BackgroundTransparency = 1
-    info.Font = Enum.Font.Gotham
-    info.TextSize = 12
-    info.TextColor3 = Color3.fromRGB(160, 160, 200)
-    info.Text = "Введите ключ доступа"
-    info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = panel
+    local t = Instance.new("TextLabel", f)
+    t.Size, t.Position, t.BackgroundTransparency = UDim2.new(1,0,0,30), UDim2.new(0,0,0,6), 1
+    t.Font, t.TextSize, t.TextColor3, t.Text = Enum.Font.GothamBlack, 20, Color3.fromRGB(200,150,255), "Wezex Hub"
+    t.TextXAlignment = Enum.TextXAlignment.Center
 
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.6, 0, 0, 34)
-    keyBox.Position = UDim2.new(0.2, 0, 0, 66)
-    keyBox.BackgroundColor3 = Color3.fromRGB(30, 28, 50)
-    keyBox.BackgroundTransparency = 0.3
-    keyBox.Font = Enum.Font.GothamBold
-    keyBox.TextSize = 16
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.Text = ""
-    keyBox.PlaceholderText = "Ключ"
-    keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+    local i = Instance.new("TextLabel", f)
+    i.Size, i.Position, i.BackgroundTransparency = UDim2.new(1,0,0,18), UDim2.new(0,0,0,42), 1
+    i.Font, i.TextSize, i.TextColor3, i.Text = Enum.Font.Gotham, 12, Color3.fromRGB(160,160,200), "Введите ключ"
+    i.TextXAlignment = Enum.TextXAlignment.Center
 
-    local enterBtn = Instance.new("TextButton")
-    enterBtn.Size = UDim2.new(0.35, 0, 0, 34)
-    enterBtn.Position = UDim2.new(0.325, 0, 0, 106)
-    enterBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
-    enterBtn.BackgroundTransparency = 0.2
-    enterBtn.Text = "Войти"
-    enterBtn.TextSize = 16
-    enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterBtn.Font = Enum.Font.GothamBold
-    enterBtn.Parent = panel
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 10)
+    local b = Instance.new("TextBox", f)
+    b.Size, b.Position, b.BackgroundColor3, b.BackgroundTransparency = UDim2.new(0.6,0,0,34), UDim2.new(0.2,0,0,66), Color3.fromRGB(30,28,50), 0.3
+    b.Font, b.TextSize, b.TextColor3, b.Text = Enum.Font.GothamBold, 16, Color3.fromRGB(255,255,255), ""
+    b.PlaceholderText, b.PlaceholderColor3, b.ClearTextOnFocus = "Ключ", Color3.fromRGB(120,120,160), false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
 
-    local enterConn
+    local btn = Instance.new("TextButton", f)
+    btn.Size, btn.Position, btn.BackgroundColor3, btn.BackgroundTransparency = UDim2.new(0.35,0,0,34), UDim2.new(0.325,0,0,106), Color3.fromRGB(150,100,255), 0.2
+    btn.Text, btn.TextSize, btn.TextColor3, btn.Font = "Войти", 16, Color3.fromRGB(255,255,255), Enum.Font.GothamBold
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
 
-    local function checkKey()
-        if keyBox.Text == CORRECT_KEY then
-            keyVerified = true
-            if enterConn then enterConn:Disconnect() end
-            keyGui:Destroy()
-            createMainUI()
+    local conn
+    local function check()
+        if b.Text == KEY then
+            if conn then conn:Disconnect() end
+            g:Destroy()
+            buildUI()
         else
-            keyBox.Text = ""
-            keyBox.PlaceholderText = "Неверно!"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(255, 80, 80)
+            b.Text = "" b.PlaceholderText = "Неверно!" b.PlaceholderColor3 = Color3.fromRGB(255,80,80)
             task.wait(0.6)
-            keyBox.PlaceholderText = "Ключ"
-            keyBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 160)
+            b.PlaceholderText, b.PlaceholderColor3 = "Ключ", Color3.fromRGB(120,120,160)
         end
     end
-
-    enterBtn.MouseButton1Click:Connect(checkKey)
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then checkKey() end
-    end)
-    enterConn = UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
-        if input.KeyCode == Enum.KeyCode.Return then checkKey() end
-    end)
+    btn.MouseButton1Click:Connect(check)
+    b.FocusLost:Connect(function(e) if e then check() end end)
+    conn = UIS.InputBegan:Connect(function(inp, gp) if not gp and inp.KeyCode == Enum.KeyCode.Return then check() end end)
 end
 
--- ====== ОСНОВНОЙ UI ======
-function createMainUI()
-    local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
-        Folder = "WezexHub",
-        Icon = "solar:folder-2-bold-duotone",
-        OpenButton = {
-            Title = "Wezex Hub",
-            Color = ColorSequence.new(Color3.fromRGB(255, 100, 255), Color3.fromRGB(100, 200, 255)),
-            Draggable = true,
-            Scale = 0.5,
-        },
+-- ===== MAIN UI =====
+function buildUI()
+    local W = WindUI:CreateWindow({
+        Title = "Wezex Hub v4.2", Folder = "WezexHub", Icon = "solar:folder-2-bold-duotone",
+        OpenButton = { Title = "Wezex Hub", Color = ColorSequence.new(Color3.fromRGB(255,100,255), Color3.fromRGB(100,200,255)), Draggable = true, Scale = 0.5 },
     })
 
-    -- ===== COMBAT =====
-    local CombatTab = Window:Tab({
-        Title = "Combat",
-        Icon = "solar:sword-bold",
-    })
-    local CombatSection = CombatTab:Section({
-        Title = "⚔️ Aimbot",
-    })
+    -- COMBAT
+    local ct = W:Tab({ Title = "Combat", Icon = "solar:sword-bold" })
+    local cs = ct:Section({ Title = "⚔️ Aimbot" })
+    cs:Toggle({ Title = "Aimbot", Desc = "Наведение камеры", Value = false, Callback = function(v) if v ~= S.aim then toggleAim() end end })
+    cs:Slider({ Title = "FOV", Value = { Min = 50, Max = 1000, Default = 250 }, Callback = function(v) S.fov = v updFov() end })
+    cs:Dropdown({ Title = "Hit Part", Values = {"Head","HumanoidRootPart","UpperTorso"}, Value = "Head", Callback = function(v) S.part = v end })
+    cs:Toggle({ Title = "Wall Check", Value = true, Callback = function(v) S.vis = v end })
 
-    CombatSection:Toggle({
-        Title = "Aimbot",
-        Desc = "Наведение камеры на цель",
-        Value = State.aimbot,
+    -- MOVEMENT
+    local mt = W:Tab({ Title = "Movement", Icon = "solar:running-bold" })
+    local ms = mt:Section({ Title = "🏃 Movement" })
+    ms:Toggle({ Title = "Noclip", Value = false, Callback = function(v) if v ~= S.noclip then toggleNoclip() end end })
+    ms:Toggle({ Title = "Infinity Jump", Value = false, Callback = function(v) if v ~= S.infJump then toggleInfJump() end end })
+
+    -- VISUALS
+    local vt = W:Tab({ Title = "Visuals", Icon = "solar:eye-bold" })
+    local vs = vt:Section({ Title = "👁️ Visual Settings" })
+    vs:Toggle({ Title = "ESP (Drawing)", Value = false, Callback = function(v) if v ~= S.esp then toggleESP() end end })
+
+    local fx = vt:Section({ Title = "✨ Visual Effects" })
+    local skies = { ["Матрица"] = "rbxassetid://191546360", ["Космос"] = "rbxassetid://159331075", ["Закат"] = "rbxassetid://160811234" }
+    fx:Dropdown({
+        Title = "Skybox", Values = {"Стандарт","Матрица","Космос","Закат"}, Value = "Стандарт",
         Callback = function(v)
-            if v ~= State.aimbot then toggleAim() end
+            local o = LGT:FindFirstChildOfClass("Sky")
+            if o then o:Destroy() end
+            if v == "Стандарт" then return end
+            local id = skies[v]
+            if not id then return end
+            local sk = Instance.new("Sky")
+            sk.SkyboxBk = id sk.SkyboxDn = id sk.SkyboxFt = id
+            sk.SkyboxLf = id sk.SkyboxRt = id sk.SkyboxUp = id
+            sk.Parent = LGT
         end,
     })
 
-    CombatSection:Slider({
-        Title = "Aimbot FOV",
-        Desc = "Радиус поиска цели",
-        Value = { Min = 50, Max = 1000, Default = State.fov },
-        Callback = function(v)
-            State.fov = v
-            updFov()
-        end,
-    })
+    fx:Toggle({ Title = "Sparkles", Value = false, Callback = function(v)
+        local c = LP.Character if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart") if not hrp then return end
+        if v then
+            if V.sparklesInst then V.sparklesInst:Destroy() end
+            V.sparklesInst = Instance.new("Sparkles", hrp)
+            V.sparklesInst.SparkleColor = Color3.fromRGB(255,255,255)
+        else if V.sparklesInst then V.sparklesInst:Destroy() V.sparklesInst = nil end end
+    end })
 
-    CombatSection:Dropdown({
-        Title = "Hit Part",
-        Desc = "Часть тела для наводки",
-        Values = { "Head", "HumanoidRootPart", "UpperTorso", "LowerTorso" },
-        Value = State.part,
-        Callback = function(v)
-            State.part = v
-        end,
-    })
+    fx:Toggle({ Title = "Trail", Value = false, Callback = function(v)
+        local c = LP.Character if not c then return end
+        if v then
+            local h, hrp = c:FindFirstChild("Head"), c:FindFirstChild("HumanoidRootPart")
+            if not h or not hrp then return end
+            if V.trailInst then V.trailInst:Destroy() end
+            V.trailInst = Instance.new("Trail")
+            V.trailInst.Attachment0 = Instance.new("Attachment", h)
+            V.trailInst.Attachment1 = Instance.new("Attachment", hrp)
+            V.trailInst.Lifetime, V.trailInst.TextureLength = 2, 3
+            V.trailInst.Texture = "rbxassetid://18421838422"
+            V.trailInst.Transparency = NumberSequence.new(0.2, 1)
+            V.trailInst.Parent = c
+        else if V.trailInst then V.trailInst:Destroy() V.trailInst = nil end end
+    end })
 
-    CombatSection:Toggle({
-        Title = "Wall Check",
-        Desc = "Не наводиться через стены",
-        Value = State.visCheck,
-        Callback = function(v)
-            State.visCheck = v
-        end,
-    })
+    fx:Toggle({ Title = "Fire Particles", Value = false, Callback = function(v)
+        local c = LP.Character if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart") if not hrp then return end
+        if v then
+            if V.fireInst then V.fireInst:Destroy() end
+            if V.fireAtt then V.fireAtt:Destroy() end
+            V.fireAtt = Instance.new("Attachment", hrp)
+            V.fireInst = Instance.new("ParticleEmitter")
+            V.fireInst.Texture = "rbxassetid://241936182"
+            V.fireInst.Color = ColorSequence.new(Color3.fromRGB(255,100,0), Color3.fromRGB(255,0,0))
+            V.fireInst.LightEmission, V.fireInst.Rate = 1, 50
+            V.fireInst.Transparency = NumberSequence.new(0,1)
+            V.fireInst.Size = NumberSequence.new(3,0)
+            V.fireInst.Lifetime = NumberRange.new(0.6,1.2)
+            V.fireInst.Speed = NumberRange.new(5,10)
+            V.fireInst.Parent = V.fireAtt
+        else
+            if V.fireInst then V.fireInst:Destroy() V.fireInst = nil end
+            if V.fireAtt then V.fireAtt:Destroy() V.fireAtt = nil end
+        end
+    end })
 
-    -- ===== MOVEMENT =====
-    local MovementTab = Window:Tab({
-        Title = "Movement",
-        Icon = "solar:running-bold",
-    })
-    local MovementSection = MovementTab:Section({
-        Title = "🏃 Movement Settings",
-    })
+    fx:Toggle({ Title = "Snow Particles", Value = false, Callback = function(v)
+        local c = LP.Character if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart") if not hrp then return end
+        if v then
+            if V.snowInst then V.snowInst:Destroy() end
+            if V.snowAtt then V.snowAtt:Destroy() end
+            V.snowAtt = Instance.new("Attachment", hrp)
+            V.snowInst = Instance.new("ParticleEmitter")
+            V.snowInst.Texture = "rbxassetid://1266170131"
+            V.snowInst.Color = ColorSequence.new(Color3.new(1,1,1))
+            V.snowInst.LightEmission, V.snowInst.Rate = 0.5, 30
+            V.snowInst.Transparency = NumberSequence.new(0,0.5)
+            V.snowInst.Size = NumberSequence.new(1.5,0.5)
+            V.snowInst.Lifetime = NumberRange.new(1,2)
+            V.snowInst.Speed = NumberRange.new(2,5)
+            V.snowInst.SpreadAngle = Vector2.new(180,180)
+            V.snowInst.Parent = V.snowAtt
+        else
+            if V.snowInst then V.snowInst:Destroy() V.snowInst = nil end
+            if V.snowAtt then V.snowAtt:Destroy() V.snowAtt = nil end
+        end
+    end })
 
-    MovementSection:Toggle({
-        Title = "Noclip",
-        Desc = "Проход сквозь стены",
-        Value = State.noclip,
-        Callback = function(v)
-            if v ~= State.noclip then toggleNoclip() end
-        end,
-    })
+    fx:Toggle({ Title = "Neon Ambient", Value = false, Callback = function(v)
+        V.amb = v
+        if v then
+            V.oA, V.oO, V.oB = LGT.Ambient, LGT.OutdoorAmbient, LGT.Brightness
+            LGT.Ambient = Color3.fromRGB(120,80,255)
+            LGT.OutdoorAmbient = Color3.fromRGB(80,40,180)
+            LGT.Brightness = 3
+        else
+            LGT.Ambient = V.oA or Color3.fromRGB(70,70,70)
+            LGT.OutdoorAmbient = V.oO or Color3.fromRGB(128,128,128)
+            LGT.Brightness = V.oB or 2
+        end
+    end })
 
-    MovementSection:Toggle({
-        Title = "Infinity Jump",
-        Desc = "Бесконечные прыжки",
-        Value = State.infJump,
-        Callback = function(v)
-            if v ~= State.infJump then toggleInfJump() end
-        end,
-    })
+    fx:Toggle({ Title = "Neon Fog", Value = false, Callback = function(v)
+        V.fog = v
+        if v then
+            V.oFE, V.oFC = LGT.FogEnd, LGT.FogColor
+            LGT.FogEnd, LGT.FogColor = 300, Color3.fromRGB(80,40,160)
+        else
+            LGT.FogEnd = V.oFE or 100000
+            LGT.FogColor = V.oFC or Color3.fromRGB(192,192,192)
+        end
+    end })
 
-    -- ===== VISUALS =====
-    local VisualsTab = Window:Tab({
-        Title = "Visuals",
-        Icon = "solar:eye-bold",
-    })
-    local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
-    })
-
-    VisualsSection:Toggle({
-        Title = "ESP (Drawing)",
-        Desc = "Безопасный ESP через Drawing API",
-        Value = State.esp,
-        Callback = function(v)
-            if v ~= State.esp then toggleESP() end
-        end,
-    })
-
-    -- ===== ABOUT =====
-    local AboutTab = Window:Tab({
-        Title = "About",
-        Icon = "solar:info-square-bold",
-    })
-    local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
-    })
-
-    AboutSection:Button({
-        Title = "Destroy Window",
-        Color = Color3.fromRGB(255, 50, 50),
+    -- ABOUT
+    local at = W:Tab({ Title = "About", Icon = "solar:info-square-bold" })
+    at:Section({ Title = "Wezex Hub v4.2" }):Button({
+        Title = "Destroy Window", Color = Color3.fromRGB(255,50,50),
         Callback = function()
-            clearESP()
-            if fovC then pcall(function() fovC:Remove() end) end
-            Window:Destroy()
+            clearESP() clearVis()
+            if aimConn then aimConn:Disconnect() end
+            pcall(function() fovC:Remove() end)
+            W:Destroy()
         end,
     })
 end
 
--- ====== ЗАПУСК ======
-showNativeKeyWindow()
+showKey()
