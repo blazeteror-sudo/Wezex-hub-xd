@@ -7,7 +7,6 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local KnifeController
 
 -- ====== ЗАГРУЗКА WINDUI ======
 local WindUI
@@ -22,91 +21,286 @@ do
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА ======
+-- ====== КЛЮЧ-СИСТЕМА ======
 local CORRECT_KEY = "38399923"
 local keyVerified = false
 
--- ====== НАШИ СОСТОЯНИЯ ======
+-- ====== СОСТОЯНИЯ ======
 local State = {
     esp = false,
-    knifeAim = false,
+    aimbot = false,
     noclip = false,
     infJump = false,
+    aimbotFOV = 250,
+    aimbotSmooth = 0.25,
+    aimbotPart = "Head",
+    aimbotVisibleCheck = true,
+    aimbotKey = "E",
+    aimbotHold = true,
+    showFov = true,
 }
 
--- ====== НАШИ ФУНКЦИИ ======
--- ESP
-local espHighlights = {}
-local espConnections = {}
+-- ====== ESP (SAFE — Drawing API) ======
+local espDrawings = {}
+local espRenderConn = nil
 
 local function clearESP()
-    for _, h in ipairs(espHighlights) do
-        if h and h.Parent then h:Destroy() end
+    for _, data in pairs(espDrawings) do
+        if data.box and data.box.Remove then data.box:Remove() end
+        if data.name and data.name.Remove then data.name:Remove() end
+        if data.hpBar and data.hpBar.Remove then data.hpBar:Remove() end
+        if data.hpBarBg and data.hpBarBg.Remove then data.hpBarBg:Remove() end
+        if data.dist and data.dist.Remove then data.dist:Remove() end
     end
-    espHighlights = {}
-    for _, c in ipairs(espConnections) do
-        if c then c:Disconnect() end
+    espDrawings = {}
+    if espRenderConn then
+        espRenderConn:Disconnect()
+        espRenderConn = nil
     end
-    espConnections = {}
 end
 
-local function applyESP(player)
+local function createDrawingFor(player)
     if player == LocalPlayer then return end
-    local function setup(char)
-        local old = char:FindFirstChild("WezexESP")
-        if old then old:Destroy() end
-        local targetPart = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-        if not targetPart then return end
-        local h = Instance.new("Highlight")
-        h.Name = "WezexESP"
-        h.Adornee = targetPart
-        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-            h.FillColor = Color3.fromRGB(0, 255, 0)
-        elseif player.Team and LocalPlayer.Team and player.Team ~= LocalPlayer.Team then
-            h.FillColor = Color3.fromRGB(255, 50, 50)
-        else
-            h.FillColor = Color3.fromRGB(255, 255, 0)
-        end
-        h.OutlineColor = Color3.fromRGB(255, 255, 255)
-        h.FillTransparency = 0.3
-        h.OutlineTransparency = 0
-        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        h.Parent = char
-        table.insert(espHighlights, h)
-    end
-    if player.Character then setup(player.Character) end
-    local conn = player.CharacterAdded:Connect(setup)
-    table.insert(espConnections, conn)
+    if espDrawings[player] then return end
+
+    local box = Drawing.new("Square")
+    box.Thickness = 1
+    box.Filled = false
+    box.Transparency = 1
+    box.Visible = false
+    box.Color = Color3.fromRGB(255, 50, 50)
+    box.ZIndex = 2
+
+    local name = Drawing.new("Text")
+    name.Size = 14
+    name.Center = true
+    name.Outline = true
+    name.OutlineColor = Color3.fromRGB(0, 0, 0)
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Visible = false
+    name.ZIndex = 3
+
+    local dist = Drawing.new("Text")
+    dist.Size = 12
+    dist.Center = true
+    dist.Outline = true
+    dist.OutlineColor = Color3.fromRGB(0, 0, 0)
+    dist.Color = Color3.fromRGB(200, 200, 200)
+    dist.Visible = false
+    dist.ZIndex = 3
+
+    local hpBarBg = Drawing.new("Square")
+    hpBarBg.Filled = true
+    hpBarBg.Transparency = 0.6
+    hpBarBg.Color = Color3.fromRGB(0, 0, 0)
+    hpBarBg.Visible = false
+    hpBarBg.ZIndex = 3
+
+    local hpBar = Drawing.new("Square")
+    hpBar.Filled = true
+    hpBar.Transparency = 1
+    hpBar.Color = Color3.fromRGB(0, 255, 0)
+    hpBar.Visible = false
+    hpBar.ZIndex = 4
+
+    espDrawings[player] = {
+        box = box,
+        name = name,
+        dist = dist,
+        hpBar = hpBar,
+        hpBarBg = hpBarBg,
+    }
 end
+
+local function removeDrawingFor(player)
+    local data = espDrawings[player]
+    if not data then return end
+    if data.box and data.box.Remove then data.box:Remove() end
+    if data.name and data.name.Remove then data.name:Remove() end
+    if data.dist and data.dist.Remove then data.dist:Remove() end
+    if data.hpBar and data.hpBar.Remove then data.hpBar:Remove() end
+    if data.hpBarBg and data.hpBarBg.Remove then data.hpBarBg:Remove() end
+    espDrawings[player] = nil
+end
+
+local function updateESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            createDrawingFor(plr)
+        end
+    end
+
+    for plr, data in pairs(espDrawings) do
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        local head = char and char:FindFirstChild("Head")
+
+        if hrp and humanoid and humanoid.Health > 0 and head then
+            local rootPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+            local footPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+
+            if onScreen then
+                local height = math.abs(headPos.Y - footPos.Y)
+                local width = height * 0.6
+                local x = rootPos.X - width / 2
+                local y = headPos.Y
+                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+
+                local color = Color3.fromRGB(255, 50, 50)
+                if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+                    color = Color3.fromRGB(0, 255, 0)
+                elseif not plr.Team or not LocalPlayer.Team then
+                    color = Color3.fromRGB(255, 255, 0)
+                end
+
+                data.box.Color = color
+                data.box.Size = Vector2.new(width, height)
+                data.box.Position = Vector2.new(x, y)
+                data.box.Visible = true
+
+                data.name.Text = plr.Name
+                data.name.Position = Vector2.new(rootPos.X, y - 30)
+                data.name.Color = color
+                data.name.Visible = true
+
+                data.dist.Text = string.format("[%d studs]", math.floor(distance))
+                data.dist.Position = Vector2.new(rootPos.X, y - 16)
+                data.dist.Visible = true
+
+                local hpRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                local barW, barH = 3, height
+                local barX = x - barW - 3
+                data.hpBarBg.Size = Vector2.new(barW, barH)
+                data.hpBarBg.Position = Vector2.new(barX, y)
+                data.hpBarBg.Visible = true
+
+                data.hpBar.Size = Vector2.new(barW, barH * hpRatio)
+                data.hpBar.Position = Vector2.new(barX, y + barH * (1 - hpRatio))
+                data.hpBar.Color = Color3.fromRGB(255 * (1 - hpRatio), 255 * hpRatio, 0)
+                data.hpBar.Visible = true
+            else
+                data.box.Visible = false
+                data.name.Visible = false
+                data.dist.Visible = false
+                data.hpBar.Visible = false
+                data.hpBarBg.Visible = false
+            end
+        else
+            data.box.Visible = false
+            data.name.Visible = false
+            data.dist.Visible = false
+            data.hpBar.Visible = false
+            data.hpBarBg.Visible = false
+        end
+    end
+end
+
+local espPlayerAdded, espPlayerRemoving
 
 local function toggleESP()
     State.esp = not State.esp
     if State.esp then
         clearESP()
         for _, p in ipairs(Players:GetPlayers()) do
-            applyESP(p)
+            createDrawingFor(p)
         end
-        table.insert(espConnections, Players.PlayerAdded:Connect(applyESP))
+        espPlayerAdded = Players.PlayerAdded:Connect(createDrawingFor)
+        espPlayerRemoving = Players.PlayerRemoving:Connect(removeDrawingFor)
+        espRenderConn = RunService.RenderStepped:Connect(updateESP)
     else
+        if espPlayerAdded then espPlayerAdded:Disconnect() espPlayerAdded = nil end
+        if espPlayerRemoving then espPlayerRemoving:Disconnect() espPlayerRemoving = nil end
         clearESP()
     end
 end
 
--- Silent Aim
-getgenv().KnifeConfig = { Enabled = false, HitPart = "Head", FOV = 450 }
-local originalThrow = nil
+-- ====== AIMBOT (FOV-based, работает только в поле зрения) ======
+local aimbotHeld = false
+local aimbotRenderConn = nil
+
+-- Визуализация FOV круга
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 1
+fovCircle.NumSides = 60
+fovCircle.Radius = State.aimbotFOV
+fovCircle.Filled = false
+fovCircle.Transparency = 0.5
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Visible = false
+
+local function updateFovCircle()
+    if State.aimbot and State.showFov then
+        fovCircle.Position = Camera.ViewportSize / 2
+        fovCircle.Radius = State.aimbotFOV
+        fovCircle.Visible = true
+    else
+        fovCircle.Visible = false
+    end
+end
+
+local function hasLineOfSight(targetPart)
+    if not State.aimbotVisibleCheck then return true end
+    local origin = Camera.CFrame.Position
+    local dir = (targetPart.Position - origin)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { LocalPlayer.Character }
+    local result = workspace:Raycast(origin, dir, params)
+    if result then
+        return result.Instance:IsDescendantOf(targetPart.Parent)
+    end
+    return true
+end
 
 local function getClosestTarget()
-    local best, bestFOV = nil, getgenv().KnifeConfig.FOV
+    local best, bestDist = nil, State.aimbotFOV
     local center = Camera.ViewportSize / 2
+    local cameraLook = Camera.CFrame.LookVector
+    local camPos = Camera.CFrame.Position
+
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-            local part = plr.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or plr.Character:FindFirstChild("HumanoidRootPart")
-            if part then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if d < bestFOV then best, bestFOV = plr, d end
+        if plr ~= LocalPlayer and plr.Character then
+            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                -- Пропускаем союзников
+                if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+                    continue
+                end
+
+                local part = plr.Character:FindFirstChild(State.aimbotPart)
+                    or plr.Character:FindFirstChild("HumanoidRootPart")
+
+                if part then
+                    -- 1) Проверка что цель ВПЕРЕДИ (не за спиной)
+                    local dirToTarget = (part.Position - camPos).Unit
+                    local dot = cameraLook:Dot(dirToTarget)
+                    if dot <= 0 then
+                        continue
+                    end
+
+                    -- 2) Проверка что цель в поле зрения
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    if not onScreen then
+                        continue
+                    end
+
+                    local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if screenDist > State.aimbotFOV then
+                        continue
+                    end
+
+                    -- 3) Проверка видимости (рейкаст)
+                    if not hasLineOfSight(part) then
+                        continue
+                    end
+
+                    -- 4) Берём ближайшую к прицелу
+                    if screenDist < bestDist then
+                        best = part
+                        bestDist = screenDist
+                    end
                 end
             end
         end
@@ -114,48 +308,66 @@ local function getClosestTarget()
     return best
 end
 
-local function applyKnifeAim()
-    if not KnifeController then
-        local success, result = pcall(function()
-            return require(LocalPlayer.PlayerScripts:WaitForChild("Controllers"):WaitForChild("Combat"):WaitForChild("KnifeController"))
-        end)
-        if success then
-            KnifeController = result
-        else
-            return
-        end
+local function updateAimbot()
+    updateFovCircle()
+
+    if not State.aimbot then return end
+    if State.aimbotHold and not aimbotHeld then return end
+
+    local target = getClosestTarget()
+    if not target then return end
+
+    local currentCF = Camera.CFrame
+    local targetCF = CFrame.new(currentCF.Position, target.Position)
+    local smooth = math.clamp(State.aimbotSmooth, 0.01, 1)
+    Camera.CFrame = currentCF:Lerp(targetCF, smooth)
+end
+
+local function startAimbot()
+    if aimbotRenderConn then aimbotRenderConn:Disconnect() end
+    aimbotRenderConn = RunService.RenderStepped:Connect(updateAimbot)
+end
+
+local function stopAimbot()
+    if aimbotRenderConn then
+        aimbotRenderConn:Disconnect()
+        aimbotRenderConn = nil
     end
-    if State.knifeAim then
-        if not originalThrow then
-            originalThrow = KnifeController._GetThrowDirection
-        end
-        KnifeController._GetThrowDirection = function(self, origin)
-            if getgenv().KnifeConfig.Enabled then
-                local target = getClosestTarget()
-                if target and target.Character then
-                    local part = target.Character:FindFirstChild(getgenv().KnifeConfig.HitPart) or target.Character:FindFirstChild("HumanoidRootPart")
-                    if part then
-                        return (part.Position - origin.Position).Unit
-                    end
-                end
-            end
-            return originalThrow(self, origin)
-        end
+    fovCircle.Visible = false
+end
+
+local function toggleAimbot()
+    State.aimbot = not State.aimbot
+    if State.aimbot then
+        startAimbot()
     else
-        if originalThrow and KnifeController then
-            KnifeController._GetThrowDirection = originalThrow
-            originalThrow = nil
-        end
+        stopAimbot()
     end
 end
 
-local function toggleKnifeAim()
-    State.knifeAim = not State.knifeAim
-    getgenv().KnifeConfig.Enabled = State.knifeAim
-    applyKnifeAim()
-end
+-- Обработка нажатий
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if State.aimbotHold and State.aimbot then
+        if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
+           (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1) or
+           (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey]) then
+            aimbotHeld = true
+        end
+    end
+end)
 
--- Noclip
+UserInputService.InputEnded:Connect(function(input)
+    if State.aimbotHold and State.aimbot then
+        if (State.aimbotKey == "MouseButton2" and input.UserInputType == Enum.UserInputType.MouseButton2) or
+           (State.aimbotKey == "MouseButton1" and input.UserInputType == Enum.UserInputType.MouseButton1) or
+           (State.aimbotKey ~= "MouseButton1" and State.aimbotKey ~= "MouseButton2" and input.KeyCode == Enum.KeyCode[State.aimbotKey]) then
+            aimbotHeld = false
+        end
+    end
+end)
+
+-- ====== NOCLIP ======
 local noclipConnection = nil
 local function toggleNoclip()
     State.noclip = not State.noclip
@@ -187,7 +399,7 @@ local function toggleNoclip()
     end
 end
 
--- Infinity Jump
+-- ====== INFINITY JUMP ======
 local infJumpConnection = nil
 local function toggleInfJump()
     State.infJump = not State.infJump
@@ -207,9 +419,8 @@ local function toggleInfJump()
     end
 end
 
--- ====== НАША РОДНАЯ КЛЮЧ-СИСТЕМА (ОКНО) ======
+-- ====== КЛЮЧ-СИСТЕМА (ОКНО) ======
 local function showNativeKeyWindow()
-    -- Очистка
     pcall(function()
         if CoreGui:FindFirstChild("KeySystem") then CoreGui.KeySystem:Destroy() end
     end)
@@ -301,10 +512,10 @@ local function showNativeKeyWindow()
     end)
 end
 
--- ====== ТВОЙ GUI НА WINDUI ======
+-- ====== ОСНОВНОЙ GUI ======
 function createMainUI()
     local Window = WindUI:CreateWindow({
-        Title = "Wezex Hub v4.1",
+        Title = "Wezex Hub v4.3",
         Folder = "WezexHub",
         Icon = "solar:folder-2-bold-duotone",
         OpenButton = {
@@ -315,26 +526,92 @@ function createMainUI()
         },
     })
 
-    -- ВКЛАДКА COMBAT
+    -- ===== COMBAT =====
     local CombatTab = Window:Tab({
         Title = "Combat",
         Icon = "solar:sword-bold",
     })
     local CombatSection = CombatTab:Section({
-        Title = "⚔️ Combat Settings",
+        Title = "⚔️ Aimbot (FOV-based)",
     })
+
     CombatSection:Toggle({
-        Title = "Silent Aim",
-        Desc = "Автоматическая наводка на голову",
-        Value = State.knifeAim,
+        Title = "Aimbot",
+        Desc = "Наводится только на цели в поле зрения",
+        Value = State.aimbot,
         Callback = function(v)
-            if v ~= State.knifeAim then
-                toggleKnifeAim()
+            if v ~= State.aimbot then
+                toggleAimbot()
             end
         end,
     })
 
-    -- ВКЛАДКА MOVEMENT
+    CombatSection:Dropdown({
+        Title = "Кнопка активации",
+        Values = { "E", "Q", "F", "C", "V", "MouseButton2", "MouseButton1" },
+        Value = State.aimbotKey,
+        Callback = function(v)
+            State.aimbotKey = v
+        end,
+    })
+
+    CombatSection:Toggle({
+        Title = "Удерживать кнопку",
+        Desc = "Вкл — держать, Выкл — переключение",
+        Value = State.aimbotHold,
+        Callback = function(v)
+            State.aimbotHold = v
+        end,
+    })
+
+    CombatSection:Slider({
+        Title = "FOV (радиус захвата)",
+        Desc = "Чем меньше — тем точнее и незаметнее",
+        Min = 50,
+        Max = 800,
+        Value = State.aimbotFOV,
+        Callback = function(v)
+            State.aimbotFOV = v
+        end,
+    })
+
+    CombatSection:Slider({
+        Title = "Smooth (плавность)",
+        Desc = "0.05 — мгновенно, 1 — медленно",
+        Min = 0.05,
+        Max = 1,
+        Value = State.aimbotSmooth,
+        Callback = function(v)
+            State.aimbotSmooth = v
+        end,
+    })
+
+    CombatSection:Dropdown({
+        Title = "Часть тела",
+        Values = { "Head", "HumanoidRootPart", "UpperTorso", "Torso" },
+        Value = State.aimbotPart,
+        Callback = function(v)
+            State.aimbotPart = v
+        end,
+    })
+
+    CombatSection:Toggle({
+        Title = "Проверка видимости",
+        Desc = "Наводиться только если цель видна (не через стены)",
+        Value = State.aimbotVisibleCheck,
+        Callback = function(v)
+            State.aimbotVisibleCheck = v
+        end,
+    })
+
+    CombatSection:Toggle({
+        Title = "Показывать FOV круг",
+        Desc = "Визуальны        Callback = function(v)
+            State.showFov = v
+        end,
+    })
+
+    -- ===== MOVEMENT =====
     local MovementTab = Window:Tab({
         Title = "Movement",
         Icon = "solar:running-bold",
@@ -363,17 +640,17 @@ function createMainUI()
         end,
     })
 
-    -- ВКЛАДКА VISUALS
+    -- ===== VISUALS =====
     local VisualsTab = Window:Tab({
         Title = "Visuals",
         Icon = "solar:eye-bold",
     })
     local VisualsSection = VisualsTab:Section({
-        Title = "👁️ Visual Settings",
+        Title = "👁️ ESP Settings",
     })
     VisualsSection:Toggle({
-        Title = "ESP (Duels)",
-        Desc = "Подсветка игроков",
+        Title = "ESP (Drawing)",
+        Desc = "Безопасный ESP через Drawing API",
         Value = State.esp,
         Callback = function(v)
             if v ~= State.esp then
@@ -382,13 +659,13 @@ function createMainUI()
         end,
     })
 
-    -- ВКЛАДКА ABOUT
+    -- ===== ABOUT =====
     local AboutTab = Window:Tab({
         Title = "About",
         Icon = "solar:info-square-bold",
     })
     local AboutSection = AboutTab:Section({
-        Title = "Wezex Hub v4.1",
+        Title = "Wezex Hub v4.3",
     })
     AboutSection:Button({
         Title = "Destroy Window",
@@ -398,9 +675,8 @@ function createMainUI()
         end,
     })
 
-    -- Синхронизация
     if State.esp then toggleESP() end
-    if State.knifeAim then toggleKnifeAim() end
+    if State.aimbot then toggleAimbot() end
     if State.noclip then toggleNoclip() end
     if State.infJump then toggleInfJump() end
 end
