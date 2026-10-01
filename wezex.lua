@@ -1,4 +1,4 @@
--- WEZEX HUB v4.4
+-- WEZEX HUB v4.5
 -- КЛЮЧ: 38399923
 local CG=game:GetService("CoreGui")local PL=game:GetService("Players")local LP=PL.LocalPlayer
 local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")
@@ -80,15 +80,36 @@ else if fP then fP:Destroy()fP=nil end if fA then fA:Destroy()fA=nil end end end
 local SK={["Galaxy"]={Bk="rbxassetid://159454299",Dn="rbxassetid://159454296",Ft="rbxassetid://159454293",Lf="rbxassetid://159454293",Rt="rbxassetid://159454293",Up="rbxassetid://159454293"},["Purple Nebula"]={Bk="rbxassetid://8107841671",Dn="rbxassetid://6444884785",Ft="rbxassetid://8107841671",Lf="rbxassetid://8107841671",Rt="rbxassetid://8107841671",Up="rbxassetid://8107849791"},["Aesthetic Mountains"]={Bk="rbxassetid://15470198023",Dn="rbxassetid://15470151245",Ft="rbxassetid://15470200128",Lf="rbxassetid://15470202648",Rt="rbxassetid://15470204862",Up="rbxassetid://15470207755"}}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=21 s.MoonAngularSize=21 s.StarCount=5000 s.Parent=LGT end
 
--- SHADER
+-- SHADER (CINEMATIC)
 local shI={}
+local shAnim=nil
+local shOrig={}
 local function tS(on)if on then for _,v in ipairs(shI)do v:Destroy()end shI={}
-local b=Instance.new("BloomEffect")b.Intensity,b.Size,b.Threshold=0.6,24,0.9 b.Parent=LGT table.insert(shI,b)
-local c=Instance.new("ColorCorrectionEffect")c.Brightness,c.Contrast,c.Saturation,c.TintColor=0.05,0.35,0.15,Color3.fromRGB(255,235,210)c.Parent=LGT table.insert(shI,c)
-local s=Instance.new("SunRaysEffect")s.Intensity,s.Spread=0.15,0.9 s.Parent=LGT table.insert(shI,s)
-local bl=Instance.new("BlurEffect")bl.Size=1 bl.Parent=LGT table.insert(shI,bl)
-local a=Instance.new("Atmosphere")a.Density,a.Offset,a.Color,a.Decay,a.Glare,a.Haze=0.35,0.1,Color3.fromRGB(199,199,199),Color3.fromRGB(106,112,125),0.2,1.5 a.Parent=LGT table.insert(shI,a)
-else for _,v in ipairs(shI)do v:Destroy()end shI={}end end
+shOrig.Tech=LGT.Technology shOrig.Clock=LGT.ClockTime shOrig.Bright=LGT.Brightness
+shOrig.Shad=LGT.GlobalShadows shOrig.Out=LGT.OutdoorAmbient
+shOrig.EnvD=LGT.EnvironmentDiffuseScale shOrig.EnvS=LGT.EnvironmentSpecularScale
+shOrig.Exp=LGT.ExposureCompensation
+pcall(function()LGT.Technology=Enum.Technology.Future end)
+LGT.ClockTime=17.4 LGT.GeographicLatitude=41.7 LGT.Brightness=2.4
+LGT.GlobalShadows=true LGT.ShadowSoftness=0.15 LGT.ExposureCompensation=0.1
+LGT.EnvironmentDiffuseScale=1 LGT.EnvironmentSpecularScale=1
+LGT.OutdoorAmbient=Color3.fromRGB(75,70,85)
+local a=LGT:FindFirstChildOfClass("Atmosphere")or Instance.new("Atmosphere")
+a.Density,a.Offset,a.Color,a.Decay,a.Glare,a.Haze=0.32,0.25,Color3.fromRGB(195,170,155),Color3.fromRGB(105,115,130),0.4,2.1
+a.Parent=LGT table.insert(shI,a)
+local b=Instance.new("BloomEffect")b.Intensity,b.Size,b.Threshold=0.65,24,0.85 b.Parent=LGT table.insert(shI,b)
+local c=Instance.new("ColorCorrectionEffect")c.Brightness,c.Contrast,c.Saturation,c.TintColor=0.03,0.22,0.18,Color3.fromRGB(255,248,242)c.Parent=LGT table.insert(shI,c)
+local s=Instance.new("SunRaysEffect")s.Intensity,s.Spread=0.25,0.8 s.Parent=LGT table.insert(shI,s)
+local d=Instance.new("DepthOfFieldEffect")d.FarIntensity,d.FocusDistance,d.InFocusRadius,d.NearIntensity=0.35,20,25,0.15 d.Parent=LGT table.insert(shI,d)
+local t=0 if shAnim then shAnim:Disconnect()end
+shAnim=RS.RenderStepped:Connect(function(dt)t=t+dt*0.5 if s and s.Parent then s.Intensity=0.22+math.sin(t)*0.05 end if b and b.Parent then b.Intensity=0.6+math.cos(t*0.8)*0.06 end end)
+else for _,v in ipairs(shI)do v:Destroy()end shI={}
+if shAnim then shAnim:Disconnect()shAnim=nil end
+if shOrig.Tech then pcall(function()LGT.Technology=shOrig.Tech end)end
+LGT.ClockTime=shOrig.Clock or 14 LGT.Brightness=shOrig.Bright or 2
+LGT.GlobalShadows=shOrig.Shad~=false LGT.OutdoorAmbient=shOrig.Out or Color3.fromRGB(128,128,128)
+LGT.EnvironmentDiffuseScale=shOrig.EnvD or 1 LGT.EnvironmentSpecularScale=shOrig.EnvS or 1
+LGT.ExposureCompensation=shOrig.Exp or 0 end end
 
 -- TRAILS
 local TR={}
@@ -113,7 +134,7 @@ local function cV()tF(false)tS(false)tT(false)local s=LGT:FindFirstChildOfClass(
 
 -- MAIN UI
 function bU()
-local Wn=W:CreateWindow({Title="Wezex Hub v4.4",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
+local Wn=W:CreateWindow({Title="Wezex Hub v4.5",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
 local ct=Wn:Tab({Title="Combat",Icon="solar:sword-bold"})local cs=ct:Section({Title="⚔️ Aimbot"})
 cs:Toggle({Title="Aimbot",Value=false,Callback=function(v)if v~=S.aim then tA()end end})
 cs:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v uF()end})
@@ -128,55 +149,28 @@ vs:Toggle({Title="ESP (Stylish)",Value=false,Callback=function(v)if v~=S.esp the
 local fx=vt:Section({Title="✨ Effects"})
 fx:Toggle({Title="Fireflies",Value=false,Callback=function(v)tF(v)end})
 fx:Dropdown({Title="Skybox",Values={"Стандарт","Galaxy","Purple Nebula","Aesthetic Mountains"},Value="Стандарт",Callback=function(v)aS(v)end})
-fx:Toggle({Title="Shader Graphics",Value=false,Callback=function(v)tS(v)end})
+fx:Toggle({Title="Cinematic Shader",Desc="Красивая графика как в кино",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Player Trails",Value=false,Callback=function(v)tT(v)end})
 local at=Wn:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v4.4"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)Wn:Destroy()end})
+at:Section({Title="Wezex Hub v4.5"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)Wn:Destroy()end})
 end
 
--- KEY UI (СТАРАЯ РАБОЧАЯ)
+-- KEY UI
 local function sK()
-    pcall(function() if CG:FindFirstChild("KeySystem") then CG.KeySystem:Destroy() end end)
-    local g = Instance.new("ScreenGui")
-    g.Name, g.ResetOnSpawn, g.IgnoreGuiInset = "KeySystem", false, true
-    if not pcall(function() g.Parent = CG end) then g.Parent = LP:WaitForChild("PlayerGui") end
-    local f = Instance.new("Frame", g)
-    f.Size, f.Position, f.BackgroundColor3, f.BackgroundTransparency = UDim2.new(0,260,0,150), UDim2.new(0.5,-130,0.5,-75), Color3.fromRGB(15,12,30), 0.15
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0,16)
-    local t = Instance.new("TextLabel", f)
-    t.Size, t.Position, t.BackgroundTransparency = UDim2.new(1,0,0,30), UDim2.new(0,0,0,6), 1
-    t.Font, t.TextSize, t.TextColor3, t.Text = Enum.Font.GothamBlack, 20, Color3.fromRGB(200,150,255), "Wezex Hub"
-    t.TextXAlignment = Enum.TextXAlignment.Center
-    local ii = Instance.new("TextLabel", f)
-    ii.Size, ii.Position, ii.BackgroundTransparency = UDim2.new(1,0,0,18), UDim2.new(0,0,0,42), 1
-    ii.Font, ii.TextSize, ii.TextColor3, ii.Text = Enum.Font.Gotham, 12, Color3.fromRGB(160,160,200), "Введите ключ"
-    ii.TextXAlignment = Enum.TextXAlignment.Center
-    local b = Instance.new("TextBox", f)
-    b.Size, b.Position, b.BackgroundColor3, b.BackgroundTransparency = UDim2.new(0.6,0,0,34), UDim2.new(0.2,0,0,66), Color3.fromRGB(30,28,50), 0.3
-    b.Font, b.TextSize, b.TextColor3, b.Text = Enum.Font.GothamBold, 16, Color3.fromRGB(255,255,255), ""
-    b.PlaceholderText, b.PlaceholderColor3, b.ClearTextOnFocus = "Ключ", Color3.fromRGB(120,120,160), false
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
-    local btn = Instance.new("TextButton", f)
-    btn.Size, btn.Position, btn.BackgroundColor3, btn.BackgroundTransparency = UDim2.new(0.35,0,0,34), UDim2.new(0.325,0,0,106), Color3.fromRGB(150,100,255), 0.2
-    btn.Text, btn.TextSize, btn.TextColor3, btn.Font = "Войти", 16, Color3.fromRGB(255,255,255), Enum.Font.GothamBold
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
-    local cn
-    local function ck()
-        if b.Text == "38399923" then
-            if cn then cn:Disconnect() end
-            g:Destroy()
-            bU()
-        else
-            b.Text = ""
-            b.PlaceholderText = "Неверно!"
-            b.PlaceholderColor3 = Color3.fromRGB(255,80,80)
-            task.wait(0.6)
-            b.PlaceholderText, b.PlaceholderColor3 = "Ключ", Color3.fromRGB(120,120,160)
-        end
-    end
-    btn.MouseButton1Click:Connect(ck)
-    b.FocusLost:Connect(function(e) if e then ck() end end)
-    cn = UIS.InputBegan:Connect(function(i, gp) if not gp and i.KeyCode == Enum.KeyCode.Return then ck() end end)
-end
+pcall(function()if CG:FindFirstChild("KeySystem")then CG.KeySystem:Destroy()end end)
+local g=Instance.new("ScreenGui")g.Name,g.ResetOnSpawn,g.IgnoreGuiInset="KeySystem",false,true
+if not pcall(function()g.Parent=CG end)then g.Parent=LP:WaitForChild("PlayerGui")end
+local f=Instance.new("Frame",g)f.Size,f.Position,f.BackgroundColor3,f.BackgroundTransparency=UDim2.new(0,260,0,150),UDim2.new(0.5,-130,0.5,-75),Color3.fromRGB(15,12,30),0.15
+Instance.new("UICorner",f).CornerRadius=UDim.new(0,16)
+local t=Instance.new("TextLabel",f)t.Size,t.Position,t.BackgroundTransparency=UDim2.new(1,0,0,30),UDim2.new(0,0,0,6),1 t.Font,t.TextSize,t.TextColor3,t.Text=Enum.Font.GothamBlack,20,Color3.fromRGB(200,150,255),"Wezex Hub"t.TextXAlignment=Enum.TextXAlignment.Center
+local ii=Instance.new("TextLabel",f)ii.Size,ii.Position,ii.BackgroundTransparency=UDim2.new(1,0,0,18),UDim2.new(0,0,0,42),1 ii.Font,ii.TextSize,ii.TextColor3,ii.Text=Enum.Font.Gotham,12,Color3.fromRGB(160,160,200),"Введите ключ"ii.TextXAlignment=Enum.TextXAlignment.Center
+local b=Instance.new("TextBox",f)b.Size,b.Position,b.BackgroundColor3,b.BackgroundTransparency=UDim2.new(0.6,0,0,34),UDim2.new(0.2,0,0,66),Color3.fromRGB(30,28,50),0.3 b.Font,b.TextSize,b.TextColor3,b.Text=Enum.Font.GothamBold,16,Color3.fromRGB(255,255,255),""b.PlaceholderText,b.PlaceholderColor3,b.ClearTextOnFocus="Ключ",Color3.fromRGB(120,120,160),false
+Instance.new("UICorner",b).CornerRadius=UDim.new(0,10)
+local btn=Instance.new("TextButton",f)btn.Size,btn.Position,btn.BackgroundColor3,btn.BackgroundTransparency=UDim2.new(0.35,0,0,34),UDim2.new(0.325,0,0,106),Color3.fromRGB(150,100,255),0.2 btn.Text,btn.TextSize,btn.TextColor3,btn.Font="Войти",16,Color3.fromRGB(255,255,255),Enum.Font.GothamBold
+Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
+local cn
+local function ck()if b.Text=="38399923"then if cn then cn:Disconnect()end g:Destroy()bU()else b.Text=""b.PlaceholderText="Неверно!"b.PlaceholderColor3=Color3.fromRGB(255,80,80)task.wait(0.6)b.PlaceholderText,b.PlaceholderColor3="Ключ",Color3.fromRGB(120,120,160)end end
+btn.MouseButton1Click:Connect(ck)b.FocusLost:Connect(function(e)if e then ck()end end)
+cn=UIS.InputBegan:Connect(function(i,gp)if not gp and i.KeyCode==Enum.KeyCode.Return then ck()end end)end
 
 sK()
