@@ -1,4 +1,4 @@
--- WEZEX HUB v4.4 (COMPACT)
+-- WEZEX HUB v4.4
 -- КЛЮЧ: 38399923
 local CG=game:GetService("CoreGui")local PL=game:GetService("Players")local LP=PL.LocalPlayer
 local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")
@@ -111,23 +111,6 @@ else if tM then tM:Disconnect()tM=nil end for _,c in pairs(tC)do if c.c then c.c
 -- CLEAR
 local function cV()tF(false)tS(false)tT(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
 
--- KEY UI
-local function sK()pcall(function()if CG:FindFirstChild("KeySystem")then CG.KeySystem:Destroy()end end)
-local g=Instance.new("ScreenGui")g.Name,g.ResetOnSpawn,g.IgnoreGuiInset="KeySystem",false,true
-if not pcall(function()g.Parent=CG end)then g.Parent=LP:WaitForChild("PlayerGui")end
-local f=Instance.new("Frame",g)f.Size,f.Position,f.BackgroundColor3,f.BackgroundTransparency=UDim2.new(0,260,0,150),UDim2.new(0.5,-130,0.5,-75),Color3.fromRGB(15,12,30),0.15
-Instance.new("UICorner",f).CornerRadius=UDim.new(0,16)
-local t=Instance.new("TextLabel",f)t.Size,t.Position,t.BackgroundTransparency=UDim2.new(1,0,0,30),UDim2.new(0,0,0,6),1 t.Font,t.TextSize,t.TextColor3,t.Text=Enum.Font.GothamBlack,20,Color3.fromRGB(200,150,255),"Wezex Hub"t.TextXAlignment=Enum.TextXAlignment.Center
-local ii=Instance.new("TextLabel",f)ii.Size,ii.Position,ii.BackgroundTransparency=UDim2.new(1,0,0,18),UDim2.new(0,0,0,42),1 ii.Font,ii.TextSize,ii.TextColor3,ii.Text=Enum.Font.Gotham,12,Color3.fromRGB(160,160,200),"Введите ключ"ii.TextXAlignment=Enum.TextXAlignment.Center
-local b=Instance.new("TextBox",f)b.Size,b.Position,b.BackgroundColor3,b.BackgroundTransparency=UDim2.new(0.6,0,0,34),UDim2.new(0.2,0,0,66),Color3.fromRGB(30,28,50),0.3 b.Font,b.TextSize,b.TextColor3,b.Text=Enum.Font.GothamBold,16,Color3.fromRGB(255,255,255),""b.PlaceholderText,b.PlaceholderColor3,b.ClearTextOnFocus="Ключ",Color3.fromRGB(120,120,160),false
-Instance.new("UICorner",b).CornerRadius=UDim.new(0,10)
-local btn=Instance.new("TextButton",f)btn.Size,btn.Position,btn.BackgroundColor3,btn.BackgroundTransparency=UDim.new(0.35,0,0,34),UDim.new(0.325,0,0,106),Color3.fromRGB(150,100,255),0.2 btn.Text,btn.TextSize,btn.TextColor3,btn.Font="Войти",16,Color3.fromRGB(255,255,255),Enum.Font.GothamBold
-Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
-local cn
-local function ck()if b.Text=="38399923"then if cn then cn:Disconnect()end g:Destroy()bU()else b.Text=""b.PlaceholderText="Неверно!"b.PlaceholderColor3=Color3.fromRGB(255,80,80)task.wait(0.6)b.PlaceholderText,b.PlaceholderColor3="Ключ",Color3.fromRGB(120,120,160)end end
-btn.MouseButton1Click:Connect(ck)b.FocusLost:Connect(function(e)if e then ck()end end)
-cn=UIS.InputBegan:Connect(function(i,gp)if not gp and i.KeyCode==Enum.KeyCode.Return then ck()end end)end
-
 -- MAIN UI
 function bU()
 local Wn=W:CreateWindow({Title="Wezex Hub v4.4",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
@@ -150,4 +133,50 @@ fx:Toggle({Title="Player Trails",Value=false,Callback=function(v)tT(v)end})
 local at=Wn:Tab({Title="About",Icon="solar:info-square-bold"})
 at:Section({Title="Wezex Hub v4.4"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)Wn:Destroy()end})
 end
+
+-- KEY UI (СТАРАЯ РАБОЧАЯ)
+local function sK()
+    pcall(function() if CG:FindFirstChild("KeySystem") then CG.KeySystem:Destroy() end end)
+    local g = Instance.new("ScreenGui")
+    g.Name, g.ResetOnSpawn, g.IgnoreGuiInset = "KeySystem", false, true
+    if not pcall(function() g.Parent = CG end) then g.Parent = LP:WaitForChild("PlayerGui") end
+    local f = Instance.new("Frame", g)
+    f.Size, f.Position, f.BackgroundColor3, f.BackgroundTransparency = UDim2.new(0,260,0,150), UDim2.new(0.5,-130,0.5,-75), Color3.fromRGB(15,12,30), 0.15
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,16)
+    local t = Instance.new("TextLabel", f)
+    t.Size, t.Position, t.BackgroundTransparency = UDim2.new(1,0,0,30), UDim2.new(0,0,0,6), 1
+    t.Font, t.TextSize, t.TextColor3, t.Text = Enum.Font.GothamBlack, 20, Color3.fromRGB(200,150,255), "Wezex Hub"
+    t.TextXAlignment = Enum.TextXAlignment.Center
+    local ii = Instance.new("TextLabel", f)
+    ii.Size, ii.Position, ii.BackgroundTransparency = UDim2.new(1,0,0,18), UDim2.new(0,0,0,42), 1
+    ii.Font, ii.TextSize, ii.TextColor3, ii.Text = Enum.Font.Gotham, 12, Color3.fromRGB(160,160,200), "Введите ключ"
+    ii.TextXAlignment = Enum.TextXAlignment.Center
+    local b = Instance.new("TextBox", f)
+    b.Size, b.Position, b.BackgroundColor3, b.BackgroundTransparency = UDim2.new(0.6,0,0,34), UDim2.new(0.2,0,0,66), Color3.fromRGB(30,28,50), 0.3
+    b.Font, b.TextSize, b.TextColor3, b.Text = Enum.Font.GothamBold, 16, Color3.fromRGB(255,255,255), ""
+    b.PlaceholderText, b.PlaceholderColor3, b.ClearTextOnFocus = "Ключ", Color3.fromRGB(120,120,160), false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
+    local btn = Instance.new("TextButton", f)
+    btn.Size, btn.Position, btn.BackgroundColor3, btn.BackgroundTransparency = UDim2.new(0.35,0,0,34), UDim2.new(0.325,0,0,106), Color3.fromRGB(150,100,255), 0.2
+    btn.Text, btn.TextSize, btn.TextColor3, btn.Font = "Войти", 16, Color3.fromRGB(255,255,255), Enum.Font.GothamBold
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
+    local cn
+    local function ck()
+        if b.Text == "38399923" then
+            if cn then cn:Disconnect() end
+            g:Destroy()
+            bU()
+        else
+            b.Text = ""
+            b.PlaceholderText = "Неверно!"
+            b.PlaceholderColor3 = Color3.fromRGB(255,80,80)
+            task.wait(0.6)
+            b.PlaceholderText, b.PlaceholderColor3 = "Ключ", Color3.fromRGB(120,120,160)
+        end
+    end
+    btn.MouseButton1Click:Connect(ck)
+    b.FocusLost:Connect(function(e) if e then ck() end end)
+    cn = UIS.InputBegan:Connect(function(i, gp) if not gp and i.KeyCode == Enum.KeyCode.Return then ck() end end)
+end
+
 sK()
