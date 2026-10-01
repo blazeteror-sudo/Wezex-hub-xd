@@ -129,8 +129,59 @@ for _,p in ipairs(PL:GetPlayers())do if p.Character then mT(p.Character)end tC[p
 tM=PL.PlayerAdded:Connect(function(p)tC[p]={c=p.CharacterAdded:Connect(mT),r=p.CharacterRemoving:Connect(rT)}end)
 else if tM then tM:Disconnect()tM=nil end for _,c in pairs(tC)do if c.c then c.c:Disconnect()end if c.r then c.r:Disconnect()end end tC={}for ch,_ in pairs(TR)do rT(ch)end end end
 
+-- SHADER RAIN (НОВИНКА)
+local rA, rP, rC = nil, nil, nil
+local function tR(on)
+    if on then
+        if rA then rA:Destroy() end
+        if rP then rP:Destroy() end
+        if rC then rC:Disconnect() rC = nil end
+        
+        rA = Instance.new("Attachment")
+        rA.Parent = CAM
+        
+        rP = Instance.new("ParticleEmitter")
+        rP.Texture = "rbxassetid://106880360"
+        rP.Color = ColorSequence.new(Color3.fromRGB(100, 150, 255))
+        rP.LightEmission = 0.2
+        rP.LightInfluence = 0.5
+        rP.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.2, 0.4),
+            NumberSequenceKeypoint.new(0.8, 0.8),
+            NumberSequenceKeypoint.new(1, 0)
+        })
+        rP.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.8),
+            NumberSequenceKeypoint.new(0.5, 0.2),
+            NumberSequenceKeypoint.new(1, 0.8)
+        })
+        rP.Lifetime = NumberRange.new(2, 3)
+        rP.Rate = 150
+        rP.Speed = NumberRange.new(30, 50)
+        rP.SpreadAngle = Vector2.new(10, 10)
+        rP.Acceleration = Vector3.new(0, -40, 0)
+        rP.Drag = 2
+        rP.EmissionDirection = Enum.NormalId.Back
+        rP.RotSpeed = NumberRange.new(-20, 20)
+        rP.Rotation = NumberRange.new(0, 360)
+        rP.ZOffset = -5
+        rP.Parent = rA
+
+        rC = CAM:GetPropertyChangedSignal("CFrame"):Connect(function()
+            if rA and rA.Parent ~= CAM then
+                tR(false)
+            end
+        end)
+    else
+        if rC then rC:Disconnect() rC = nil end
+        if rP then rP:Destroy() rP = nil end
+        if rA then rA:Destroy() rA = nil end
+    end
+end
+
 -- CLEAR
-local function cV()tF(false)tS(false)tT(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
+local function cV()tF(false)tS(false)tT(false)tR(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
 
 -- MAIN UI
 function bU()
@@ -151,6 +202,7 @@ fx:Toggle({Title="Fireflies",Value=false,Callback=function(v)tF(v)end})
 fx:Dropdown({Title="Skybox",Values={"Стандарт","Galaxy","Purple Nebula","Aesthetic Mountains"},Value="Стандарт",Callback=function(v)aS(v)end})
 fx:Toggle({Title="Cinematic Shader",Desc="Красивая графика как в кино",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Player Trails",Value=false,Callback=function(v)tT(v)end})
+fx:Toggle({Title="Shader Rain",Desc="Динамический дождь с постобработкой",Value=false,Callback=function(v)tR(v)end})
 local at=Wn:Tab({Title="About",Icon="solar:info-square-bold"})
 at:Section({Title="Wezex Hub v4.5"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)Wn:Destroy()end})
 end
