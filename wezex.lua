@@ -57,7 +57,7 @@ local WORLD_RADIUS=350
 local function tF(on)
 if not on then
 if fConn then fConn:Disconnect()fConn=nil end
-for _,f in ipairs(fFlies)do if f.part then f.part:Destroy()end if f.light then f.light:Destroy()end if f.glow then f.glow:Destroy()end if f.trail then f.trail:Destroy()end end
+for _,f in ipairs(fFlies)do if f.part then f.part:Destroy()end if f.light then f.light:Destroy()end end
 fFlies={}return
 end
 if fConn then return end
@@ -89,37 +89,8 @@ light.Range=14
 light.Brightness=3.5
 light.Shadows=false
 light.Parent=part
-local glow=Instance.new("BillboardGui")
-glow.Size=UDim2.new(0,70,0,70)
-glow.AlwaysOnTop=false
-glow.LightInfluence=0
-glow.Parent=part
-local img=Instance.new("ImageLabel")
-img.BackgroundTransparency=1
-img.Image="rbxassetid://243660364"
-img.ImageColor3=Color3.fromRGB(255,240,150)
-img.ImageTransparency=0.15
-img.Size=UDim2.new(1,0,1,0)
-img.Parent=glow
-local a0=Instance.new("Attachment",part)a0.Position=Vector3.new(0,0,0)
-local a1=Instance.new("Attachment",part)a1.Position=Vector3.new(0,0,0)
-local trail=Instance.new("Trail")
-trail.Attachment0=a0
-trail.Attachment1=a1
-trail.Lifetime=0.55
-trail.MinLength=0.02
-trail.Texture="rbxassetid://243660364"
-trail.TextureMode=Enum.TextureMode.Stretch
-trail.TextureLength=0.55
-trail.WidthScale=NumberSequence.new({NumberSequenceKeypoint.new(0,0.55),NumberSequenceKeypoint.new(1,0)})
-trail.LightEmission=1
-trail.LightInfluence=0
-trail.FaceCamera=true
-trail.Color=ColorSequence.new(Color3.fromRGB(255,240,140))
-trail.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.15),NumberSequenceKeypoint.new(1,1)})
-trail.Parent=part
 return{
-part=part,light=light,glow=glow,trail=trail,
+part=part,light=light,
 pos=part.Position,
 target=randPos(),
 speed=rng:NextNumber(8,22),
@@ -144,7 +115,7 @@ end
 end
 end)
 end
-local SK={["Galaxy"]={Bk="rbxassetid://159454299",Dn="rbxassetid://159454296",Ft="rbxassetid://159454293",Lf="rbxassetid://159454293",Rt="rbxassetid://159454293",Up="rbxassetid://159454293"},["Purple Nebula"]={Bk="rbxassetid://8107841671",Dn="rbxassetid://6444884785",Ft="rbxassetid://8107841671",Lf="rbxassetid://8107841671",Rt="rbxassetid://8107841671",Up="rbxassetid://8107849791"},["Aesthetic Mountains"]={Bk="rbxassetid://15470198023",Dn="rbxassetid://15470151245",Ft="rbxassetid://15470200128",Lf="rbxassetid://15470202648",Rt="rbxassetid://15470204862",Up="rbxassetid://15470207755"}}
+local SK={["Night Sky With Moon HD"]={Bk="rbxassetid://14828385099",Dn="rbxassetid://14828385099",Ft="rbxassetid://14828385099",Lf="rbxassetid://14828385099",Rt="rbxassetid://14828385099",Up="rbxassetid://14828385099"}}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=21 s.MoonAngularSize=21 s.StarCount=5000 s.Parent=LGT end
 local shI={}
 local shAnim=nil
@@ -204,7 +175,7 @@ local vs=vt:Section({Title="ESP"})
 vs:Toggle({Title="ESP (Stylish)",Value=false,Callback=function(v)if v~=S.esp then tE()end end})
 local fx=vt:Section({Title="Effects"})
 fx:Toggle({Title="Fireflies 3D",Value=false,Callback=function(v)tF(v)end})
-fx:Dropdown({Title="Skybox",Values={"Стандарт","Galaxy","Purple Nebula","Aesthetic Mountains"},Value="Стандарт",Callback=function(v)aS(v)end})
+fx:Dropdown({Title="Skybox",Values={"Стандарт","Night Sky With Moon HD"},Value="Стандарт",Callback=function(v)aS(v)end})
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
