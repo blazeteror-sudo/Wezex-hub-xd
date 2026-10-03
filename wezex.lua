@@ -1,7 +1,7 @@
 local L=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 local PL=game:GetService("Players")local LP=PL.LocalPlayer local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
 local S={esp=false,aim=false,noclip=false,infjump=false,fov=250,part="Head",vis=true}
-local W=L:CreateWindow({Title="Wezex Hub v5.2",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
+local W=L:CreateWindow({Title="Wezex Hub v5.4",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
 local aC,fC=nil,Drawing.new("Circle")fC.Thickness,fC.NumSides,fC.Filled=1,60,false fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
 local function uF()fC.Visible=S.aim if S.aim then fC.Position=CAM.ViewportSize/2 fC.Radius=S.fov end end
 local function hL(p)if not S.vis then return true end local rp=RaycastParams.new()rp.FilterType=Enum.RaycastFilterType.Exclude rp.FilterDescendantsInstances={LP.Character}local r=workspace:Raycast(CAM.CFrame.Position,p.Position-CAM.CFrame.Position,rp)return not r or r.Instance:IsDescendantOf(p.Parent)end
@@ -50,128 +50,117 @@ local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
--- PEEK-A-BOO — по перетаскиваемой кнопке
-local peekEnabled=false
-local peekCooldown=0
-local PEEK_SPEED=140
-local PEEK_TIME=0.25
-local PEEK_CD=0.4
-local peekGui=nil
-local peekBtn=nil
-local function moveDir(dir,duration)
+-- TP TO NEAREST PLAYER (WindUI-style button)
+local tpEnabled=false
+local tpCooldown=0
+local TP_CD=1.0
+local TP_OFFSET=2.5
+local tpGui=nil
+local tpBtn=nil
+local function findNearestPlayer()
 local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-if not hrp then return end
-local bv=Instance.new("BodyVelocity")
-bv.MaxForce=Vector3.new(math.huge,0,math.huge)
-bv.Velocity=CAM.CFrame.RightVector*(dir*PEEK_SPEED)
-bv.Parent=hrp
-game:GetService("Debris"):AddItem(bv,duration)
-end
-local function findPeekDir()
-local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-if not hrp then return 1 end
+if not hrp then return nil end
 local myPos=hrp.Position
-local bestHead=nil
+local best=nil
 local bestDist=math.huge
 for _,p in ipairs(PL:GetPlayers())do
 if p~=LP and p.Character then
 local h=p.Character:FindFirstChildOfClass("Humanoid")
-local head=p.Character:FindFirstChild("Head")
-if h and h.Health>0 and head then
-local dist=(head.Position-myPos).Magnitude
-if dist<bestDist then
-bestHead=head
-bestDist=dist
+local hr=p.Character:FindFirstChild("HumanoidRootPart")
+if h and h.Health>0 and hr then
+local d=(hr.Position-myPos).Magnitude
+if d<bestDist then
+best=hr
+bestDist=d
 end
 end
 end
 end
-if not bestHead then return 1 end
-local toEnemy=bestHead.Position-myPos
-local sideSign=toEnemy:Dot(CAM.CFrame.RightVector)
-return sideSign>=0 and 1 or -1
+return best
 end
-local function doPeek()
-if os.clock()<peekCooldown then return end
-local dir=findPeekDir()
-moveDir(dir,PEEK_TIME)
-task.delay(PEEK_TIME,function()
-moveDir(-dir,0.12)
-end)
-peekCooldown=os.clock()+PEEK_CD
+local function doTP()
+if os.clock()<tpCooldown then return end
+local target=findNearestPlayer()
+local myHrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if not target or not myHrp then return end
+local pos=target.Position
+local dir=(myHrp.Position-pos)
+if dir.Magnitude>0.1 then
+pos=pos+dir.Unit*TP_OFFSET
 end
-local function tP(on)
-peekEnabled=on
+myHrp.CFrame=CFrame.new(pos)
+tpCooldown=os.clock()+TP_CD
+end
+local function tTP(on)
+tpEnabled=on
 if on then
-if peekGui then peekGui:Destroy() end
-peekGui=Instance.new("ScreenGui")
-peekGui.Name="PeekBtnGui"
-peekGui.ResetOnSpawn=false
-peekGui.IgnoreGuiInset=true
-pcall(function() peekGui.Parent=game:GetService("CoreGui") end)
-if not peekGui.Parent then peekGui.Parent=LP:WaitForChild("PlayerGui") end
-peekBtn=Instance.new("TextButton")
-peekBtn.Size=UDim2.new(0,70,0,70)
-peekBtn.Position=UDim2.new(0,20,0.5,-35)
-peekBtn.BackgroundColor3=Color3.fromRGB(255,80,120)
-peekBtn.BackgroundTransparency=0.15
-peekBtn.Text="PEEK"
-peekBtn.TextColor3=Color3.fromRGB(255,255,255)
-peekBtn.TextSize=18
-peekBtn.Font=Enum.Font.GothamBold
-peekBtn.AutoButtonColor=true
-peekBtn.Active=true
-peekBtn.Parent=peekGui
+if tpGui then tpGui:Destroy() end
+tpGui=Instance.new("ScreenGui")
+tpGui.Name="TPBtnGui"
+tpGui.ResetOnSpawn=false
+tpGui.IgnoreGuiInset=true
+pcall(function() tpGui.Parent=game:GetService("CoreGui") end)
+if not tpGui.Parent then tpGui.Parent=LP:WaitForChild("PlayerGui") end
+tpBtn=Instance.new("TextButton")
+tpBtn.Size=UDim2.new(0,44,0,44)
+tpBtn.Position=UDim2.new(0,20,0.5,-22)
+tpBtn.BackgroundColor3=Color3.fromRGB(20,20,25)
+tpBtn.BackgroundTransparency=0.1
+tpBtn.Text=""
+tpBtn.AutoButtonColor=true
+tpBtn.Active=true
+tpBtn.Parent=tpGui
 local corner=Instance.new("UICorner")
-corner.CornerRadius=UDim.new(0,16)
-corner.Parent=peekBtn
+corner.CornerRadius=UDim.new(1,0)
+corner.Parent=tpBtn
+local grad=Instance.new("UIGradient")
+grad.Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255))
+grad.Rotation=45
+grad.Parent=tpBtn
 local stroke=Instance.new("UIStroke")
 stroke.Color=Color3.fromRGB(255,255,255)
-stroke.Thickness=2
-stroke.Transparency=0.4
-stroke.Parent=peekBtn
--- DRAG (перетаскивание)
+stroke.Thickness=1
+stroke.Transparency=0.7
+stroke.Parent=tpBtn
+local icon=Instance.new("ImageLabel")
+icon.Size=UDim2.new(0,24,0,24)
+icon.Position=UDim2.new(0.5,-12,0.5,-12)
+icon.BackgroundTransparency=1
+icon.Image="rbxassetid://10734886055"
+icon.ImageColor3=Color3.fromRGB(255,255,255)
+icon.Parent=tpBtn
 local dragging=false
 local dragStart=nil
 local startPos=nil
-peekBtn.InputBegan:Connect(function(input)
+local tapStart=nil
+tpBtn.InputBegan:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
 dragging=true
 dragStart=input.Position
-startPos=peekBtn.Position
+startPos=tpBtn.Position
+tapStart=input.Position
 end
 end)
-peekBtn.InputEnded:Connect(function(input)
+tpBtn.InputEnded:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
 dragging=false
+if tapStart and (input.Position-tapStart).Magnitude<10 then
+doTP()
+end
+tapStart=nil
 end
 end)
 UIS.InputChanged:Connect(function(input)
 if dragging and dragStart then
 if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then
 local delta=input.Position-dragStart
-peekBtn.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+tpBtn.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
 end
-end
-end)
--- TAP = PEEK (если не таскал)
-local tapStart=nil
-peekBtn.InputBegan:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-tapStart=input.Position
-end
-end)
-peekBtn.InputEnded:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-if tapStart and (input.Position-tapStart).Magnitude<10 then
-doPeek()
-end
-tapStart=nil
 end
 end)
 else
-if peekGui then peekGui:Destroy() peekGui=nil end
-peekBtn=nil
+if tpGui then tpGui:Destroy() tpGui=nil end
+tpBtn=nil
 end
 end
 -- FIREFLIES
@@ -285,11 +274,10 @@ cs:Toggle({Title="Aimbot",Value=false,Callback=function(v)if v~=S.aim then tA()e
 cs:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v uF()end})
 cs:Dropdown({Title="Hit Part",Values={"Head","HumanoidRootPart","UpperTorso"},Value="Head",Callback=function(v)S.part=v end})
 cs:Toggle({Title="Wall Check",Value=true,Callback=function(v)S.vis=v end})
-local ps=ct:Section({Title="Peek-a-Boo"})
-ps:Toggle({Title="Peek Button",Value=false,Callback=function(v)tP(v)end})
-ps:Slider({Title="Peek Power",Value={Min=60,Max=300,Default=140},Callback=function(v)PEEK_SPEED=v end})
-ps:Slider({Title="Peek Duration",Value={Min=10,Max=60,Default=25},Callback=function(v)PEEK_TIME=v/100 end})
-ps:Slider({Title="Peek Cooldown",Value={Min=1,Max=20,Default=4},Callback=function(v)PEEK_CD=v/10 end})
+local ts=ct:Section({Title="Teleport"})
+ts:Toggle({Title="TP Button (Nearest)",Value=false,Callback=function(v)tTP(v)end})
+ts:Slider({Title="TP Cooldown",Value={Min=1,Max=50,Default=10},Callback=function(v)TP_CD=v/10 end})
+ts:Slider({Title="TP Distance",Value={Min=1,Max=10,Default=25},Callback=function(v)TP_OFFSET=v/10 end})
 local mt=W:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="Movement"})
 ms:Toggle({Title="Noclip",Value=false,Callback=function(v)if v~=S.noclip then tN()end end})
 ms:Toggle({Title="Infinity Jump",Value=false,Callback=function(v)if v~=S.infJump then tJ()end end})
@@ -300,6 +288,6 @@ local fx=vt:Section({Title="Effects"})
 fx:Toggle({Title="Fireflies 3D",Value=false,Callback=function(v)tF(v)end})
 fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula"},Value="Стандарт",Callback=function(v)aS(v)end})
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
-fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
+fx:Toggle({Title="Spiral Trails",Value=false,Callback(function(v)tT(v)end)})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v5.2"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if peekGui then peekGui:Destroy()end pcall(function()fC:Remove()end)W:Destroy()end})
+at:Section({Title="Wezex Hub v5.4"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if tpGui then tpGui:Destroy()end pcall(function()fC:Remove()end)W:Destroy()end})
