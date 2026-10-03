@@ -101,19 +101,22 @@ img.ImageColor3=Color3.fromRGB(255,240,150)
 img.ImageTransparency=0.15
 img.Size=UDim2.new(1,0,1,0)
 img.Parent=glow
-local a0=Instance.new("Attachment",part)a0.Position=Vector3.new(0,0,0.35)
-local a1=Instance.new("Attachment",part)a1.Position=Vector3.new(0,0,-0.35)
+local a0=Instance.new("Attachment",part)a0.Position=Vector3.new(0,0,0)
+local a1=Instance.new("Attachment",part)a1.Position=Vector3.new(0,0,0)
 local trail=Instance.new("Trail")
 trail.Attachment0=a0
 trail.Attachment1=a1
-trail.Lifetime=0.6
-trail.MinLength=0.05
+trail.Lifetime=0.55
+trail.MinLength=0.02
 trail.Texture="rbxassetid://243660364"
 trail.TextureMode=Enum.TextureMode.Stretch
+trail.TextureLength=0.55
+trail.WidthScale=NumberSequence.new({NumberSequenceKeypoint.new(0,0.55),NumberSequenceKeypoint.new(1,0)})
 trail.LightEmission=1
 trail.LightInfluence=0
+trail.FaceCamera=true
 trail.Color=ColorSequence.new(Color3.fromRGB(255,240,140))
-trail.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,1)})
+trail.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.15),NumberSequenceKeypoint.new(1,1)})
 trail.Parent=part
 return{
 part=part,light=light,glow=glow,trail=trail,
