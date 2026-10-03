@@ -116,9 +116,7 @@ end
 end)
 end
 local SK={
-["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"},
-["Golden Sunset"]={Bk="rbxassetid://323494035",Dn="rbxassetid://323494368",Ft="rbxassetid://323494130",Lf="rbxassetid://323494252",Rt="rbxassetid://323494067",Up="rbxassetid://323493360"},
-["Deep Space"]={Bk="rbxassetid://196263782",Dn="rbxassetid://196263643",Ft="rbxassetid://196263721",Lf="rbxassetid://196263782",Rt="rbxassetid://196263782",Up="rbxassetid://196263782"}
+["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"}
 }
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=14 s.MoonAngularSize=14 s.StarCount=5000 s.CelestialBodiesShown=true s.Parent=LGT end
 local shI={}
@@ -179,7 +177,7 @@ local vs=vt:Section({Title="ESP"})
 vs:Toggle({Title="ESP (Stylish)",Value=false,Callback=function(v)if v~=S.esp then tE()end end})
 local fx=vt:Section({Title="Effects"})
 fx:Toggle({Title="Fireflies 3D",Value=false,Callback=function(v)tF(v)end})
-fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula","Golden Sunset","Deep Space"},Value="Стандарт",Callback=function(v)aS(v)end})
+fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula"},Value="Стандарт",Callback=function(v)aS(v)end})
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
