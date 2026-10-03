@@ -1,22 +1,15 @@
--- WEZEX HUB v4.5
--- КЛЮЧ: 38399923
-local CG=game:GetService("CoreGui")local PL=game:GetService("Players")local LP=PL.LocalPlayer
-local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")
-local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
-local W=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+-- WEZEX HUB v4.6 (Oxide Style) | KEY: 38399923
+local L=loadstring(game:HttpGet("https://pastefy.app/2eRdp0K5/raw"))()
+local PL=game:GetService("Players")local LP=PL.LocalPlayer local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
 local S={esp=false,aim=false,noclip=false,infjump=false,fov=250,part="Head",vis=true}
-
--- AIMBOT
-local aC,fC=nil,Drawing.new("Circle")
-fC.Thickness,fC.NumSides,fC.Filled=1,60,false
-fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
+local W=L:CreateWindow({Name="Wezex Hub v4.6",LoadingAnimation=true,LoadingText="Wezex",LoadingDuration=2})
+local function N(t,c,k,d)pcall(function()W:Notify({Title=t,Content=c,Type=k or "Info",Duration=d or 2.5})end)end
+local aC,fC=nil,Drawing.new("Circle")fC.Thickness,fC.NumSides,fC.Filled=1,60,false fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
 local function uF()fC.Visible=S.aim if S.aim then fC.Position=CAM.ViewportSize/2 fC.Radius=S.fov end end
 local function hL(p)if not S.vis then return true end local rp=RaycastParams.new()rp.FilterType=Enum.RaycastFilterType.Exclude rp.FilterDescendantsInstances={LP.Character}local r=workspace:Raycast(CAM.CFrame.Position,p.Position-CAM.CFrame.Position,rp)return not r or r.Instance:IsDescendantOf(p.Parent)end
 local function gT()local b,bd=nil,S.fov local c,lk,cp=CAM.ViewportSize/2,CAM.CFrame.LookVector,CAM.CFrame.Position for _,p in ipairs(PL:GetPlayers())do if p~=LP and p.Character then local h=p.Character:FindFirstChildOfClass("Humanoid")if h and h.Health>0 then if p.Team and LP.Team and p.Team==LP.Team then continue end local pt=p.Character:FindFirstChild(S.part)or p.Character:FindFirstChild("HumanoidRootPart")if pt and lk:Dot((pt.Position-cp).Unit)>0 then local po,os=CAM:WorldToViewportPoint(pt.Position)if os then local d=(Vector2.new(po.X,po.Y)-c).Magnitude if d<=S.fov and d<bd and hL(pt)then b,bd=pt,d end end end end end end return b end
 local function uA()uF()if S.aim then local t=gT()if t then CAM.CFrame=CFrame.new(CAM.CFrame.Position,t.Position)end end end
 local function tA()S.aim=not S.aim if S.aim then if aC then aC:Disconnect()end aC=RS.RenderStepped:Connect(uA)else if aC then aC:Disconnect()aC=nil end fC.Visible=false end end
-
--- ESP
 local E,eC,eA,eR={},nil,nil,nil
 local K={"box","shadow","name","nameBg","dist","hp","hpBg","tracer","c1","c2","c3","c4","c5","c6","c7","c8"}
 local function cE()for _,d in pairs(E)do for _,k in ipairs(K)do if d[k]then pcall(function()d[k]:Remove()end)end end end E={}if eC then eC:Disconnect()eC=nil end if eA then eA:Disconnect()eA=nil end if eR then eR:Disconnect()eR=nil end end
@@ -54,16 +47,10 @@ d.hp.Size,d.hp.Position,d.hp.Color,d.hp.Visible=Vector2.new(4,H*r),Vector2.new(b
 d.tracer.From,d.tracer.To,d.tracer.Color,d.tracer.Visible=Vector2.new(vp.X/2,vp.Y),Vector2.new(rp.X,y+H),tc,true
 else hA(d)end else hA(d)end end end
 local function tE()S.esp=not S.esp if S.esp then cE()for _,p in ipairs(PL:GetPlayers())do mE(p)end eA=PL.PlayerAdded:Connect(mE)eR=PL.PlayerRemoving:Connect(rE)eC=RS.RenderStepped:Connect(uE)else cE()end end
-
--- NOCLIP
 local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
-
--- INF JUMP
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
-
--- FIREFLIES
 local fA,fP
 local function tF(on)if on then if fA then fA:Destroy()end if fP then fP:Destroy()end
 fA=Instance.new("Attachment")fA.Parent=CAM
@@ -75,12 +62,8 @@ fP.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequen
 fP.Lifetime=NumberRange.new(6,10)fP.Rate=80 fP.Speed=NumberRange.new(1,3)fP.SpreadAngle=Vector2.new(180,180)
 fP.Acceleration=Vector3.new(0,0.5,0)fP.Drag=2 fP.Rotation=NumberRange.new(0,360)fP.RotSpeed=NumberRange.new(-50,50)fP.ZOffset=2 fP.Parent=fA
 else if fP then fP:Destroy()fP=nil end if fA then fA:Destroy()fA=nil end end end
-
--- SKYBOX
 local SK={["Galaxy"]={Bk="rbxassetid://159454299",Dn="rbxassetid://159454296",Ft="rbxassetid://159454293",Lf="rbxassetid://159454293",Rt="rbxassetid://159454293",Up="rbxassetid://159454293"},["Purple Nebula"]={Bk="rbxassetid://8107841671",Dn="rbxassetid://6444884785",Ft="rbxassetid://8107841671",Lf="rbxassetid://8107841671",Rt="rbxassetid://8107841671",Up="rbxassetid://8107849791"},["Aesthetic Mountains"]={Bk="rbxassetid://15470198023",Dn="rbxassetid://15470151245",Ft="rbxassetid://15470200128",Lf="rbxassetid://15470202648",Rt="rbxassetid://15470204862",Up="rbxassetid://15470207755"}}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=21 s.MoonAngularSize=21 s.StarCount=5000 s.Parent=LGT end
-
--- SHADER (CINEMATIC)
 local shI={}
 local shAnim=nil
 local shOrig={}
@@ -110,8 +93,6 @@ LGT.ClockTime=shOrig.Clock or 14 LGT.Brightness=shOrig.Bright or 2
 LGT.GlobalShadows=shOrig.Shad~=false LGT.OutdoorAmbient=shOrig.Out or Color3.fromRGB(128,128,128)
 LGT.EnvironmentDiffuseScale=shOrig.EnvD or 1 LGT.EnvironmentSpecularScale=shOrig.EnvS or 1
 LGT.ExposureCompensation=shOrig.Exp or 0 end end
-
--- TRAILS
 local TR={}
 local function mT(c)if not c then return end local hr=c:FindFirstChild("HumanoidRootPart")or c:FindFirstChild("UpperTorso")or c:FindFirstChild("Torso")if not hr then return end if TR[c]then return end
 local a0=Instance.new("Attachment",hr)a0.Position=Vector3.new(-1,0,0)
@@ -128,73 +109,28 @@ local function tT(on)if on then if tM then tM:Disconnect()end
 for _,p in ipairs(PL:GetPlayers())do if p.Character then mT(p.Character)end tC[p]={c=p.CharacterAdded:Connect(mT),r=p.CharacterRemoving:Connect(rT)}end
 tM=PL.PlayerAdded:Connect(function(p)tC[p]={c=p.CharacterAdded:Connect(mT),r=p.CharacterRemoving:Connect(rT)}end)
 else if tM then tM:Disconnect()tM=nil end for _,c in pairs(tC)do if c.c then c.c:Disconnect()end if c.r then c.r:Disconnect()end end tC={}for ch,_ in pairs(TR)do rT(ch)end end end
-
--- SHADER RAIN (НОВИНКА)
-local rA, rP, rC = nil, nil, nil
-local function tR(on)
-    if on then
-        if rA then rA:Destroy() end
-        if rP then rP:Destroy() end
-        if rC then rC:Disconnect() rC = nil end
-        
-        rA = Instance.new("Attachment")
-        rA.Parent = CAM
-        
-        rP = Instance.new("ParticleEmitter")
-        rP.Texture = "rbxassetid://106880360"
-        rP.Color = ColorSequence.new(Color3.fromRGB(100, 150, 255))
-        rP.LightEmission = 0.2
-        rP.LightInfluence = 0.5
-        rP.Size = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0),
-            NumberSequenceKeypoint.new(0.2, 0.4),
-            NumberSequenceKeypoint.new(0.8, 0.8),
-            NumberSequenceKeypoint.new(1, 0)
-        })
-        rP.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.8),
-            NumberSequenceKeypoint.new(0.5, 0.2),
-            NumberSequenceKeypoint.new(1, 0.8)
-        })
-        rP.Lifetime = NumberRange.new(2, 3)
-        rP.Rate = 150
-        rP.Speed = NumberRange.new(30, 50)
-        rP.SpreadAngle = Vector2.new(10, 10)
-        rP.Acceleration = Vector3.new(0, -40, 0)
-        rP.Drag = 2
-        rP.EmissionDirection = Enum.NormalId.Back
-        rP.RotSpeed = NumberRange.new(-20, 20)
-        rP.Rotation = NumberRange.new(0, 360)
-        rP.ZOffset = -5
-        rP.Parent = rA
-
-        rC = CAM:GetPropertyChangedSignal("CFrame"):Connect(function()
-            if rA and rA.Parent ~= CAM then
-                tR(false)
-            end
-        end)
-    else
-        if rC then rC:Disconnect() rC = nil end
-        if rP then rP:Destroy() rP = nil end
-        if rA then rA:Destroy() rA = nil end
-    end
-end
-
--- CLEAR
+local rA,rP,rC=nil,nil,nil
+local function tR(on)if on then if rA then rA:Destroy()end if rP then rP:Destroy()end if rC then rC:Disconnect()rC=nil end
+rA=Instance.new("Attachment")rA.Parent=CAM
+rP=Instance.new("ParticleEmitter")rP.Texture="rbxassetid://106880360"
+rP.Color=ColorSequence.new(Color3.fromRGB(100,150,255))rP.LightEmission=0.2 rP.LightInfluence=0.5
+rP.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.2,0.4),NumberSequenceKeypoint.new(0.8,0.8),NumberSequenceKeypoint.new(1,0)})
+rP.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.8),NumberSequenceKeypoint.new(0.5,0.2),NumberSequenceKeypoint.new(1,0.8)})
+rP.Lifetime=NumberRange.new(2,3)rP.Rate=150 rP.Speed=NumberRange.new(30,50)rP.SpreadAngle=Vector2.new(10,10)
+rP.Acceleration=Vector3.new(0,-40,0)rP.Drag=2 rP.EmissionDirection=Enum.NormalId.Back
+rP.RotSpeed=NumberRange.new(-20,20)rP.Rotation=NumberRange.new(0,360)rP.ZOffset=-5 rP.Parent=rA
+rC=CAM:GetPropertyChangedSignal("CFrame"):Connect(function()if rA and rA.Parent~=CAM then tR(false)end end)
+else if rC then rC:Disconnect()rC=nil end if rP then rP:Destroy()rP=nil end if rA then rA:Destroy()rA=nil end end end
 local function cV()tF(false)tS(false)tT(false)tR(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
-
--- MAIN UI
-function bU()
-local Wn=W:CreateWindow({Title="Wezex Hub v4.5",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
-local ct=Wn:Tab({Title="Combat",Icon="solar:sword-bold"})local cs=ct:Section({Title="⚔️ Aimbot"})
+local ct=W:Tab({Title="Combat",Icon="solar:sword-bold"})local cs=ct:Section({Title="⚔️ Aimbot"})
 cs:Toggle({Title="Aimbot",Value=false,Callback=function(v)if v~=S.aim then tA()end end})
 cs:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v uF()end})
 cs:Dropdown({Title="Hit Part",Values={"Head","HumanoidRootPart","UpperTorso"},Value="Head",Callback=function(v)S.part=v end})
 cs:Toggle({Title="Wall Check",Value=true,Callback=function(v)S.vis=v end})
-local mt=Wn:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="🏃 Movement"})
+local mt=W:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="🏃 Movement"})
 ms:Toggle({Title="Noclip",Value=false,Callback=function(v)if v~=S.noclip then tN()end end})
 ms:Toggle({Title="Infinity Jump",Value=false,Callback=function(v)if v~=S.infJump then tJ()end end})
-local vt=Wn:Tab({Title="Visuals",Icon="solar:eye-bold"})
+local vt=W:Tab({Title="Visuals",Icon="solar:eye-bold"})
 local vs=vt:Section({Title="👁️ ESP"})
 vs:Toggle({Title="ESP (Stylish)",Value=false,Callback=function(v)if v~=S.esp then tE()end end})
 local fx=vt:Section({Title="✨ Effects"})
@@ -203,26 +139,6 @@ fx:Dropdown({Title="Skybox",Values={"Стандарт","Galaxy","Purple Nebula",
 fx:Toggle({Title="Cinematic Shader",Desc="Красивая графика как в кино",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Player Trails",Value=false,Callback=function(v)tT(v)end})
 fx:Toggle({Title="Shader Rain",Desc="Динамический дождь с постобработкой",Value=false,Callback=function(v)tR(v)end})
-local at=Wn:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v4.5"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)Wn:Destroy()end})
-end
-
--- KEY UI
-local function sK()
-pcall(function()if CG:FindFirstChild("KeySystem")then CG.KeySystem:Destroy()end end)
-local g=Instance.new("ScreenGui")g.Name,g.ResetOnSpawn,g.IgnoreGuiInset="KeySystem",false,true
-if not pcall(function()g.Parent=CG end)then g.Parent=LP:WaitForChild("PlayerGui")end
-local f=Instance.new("Frame",g)f.Size,f.Position,f.BackgroundColor3,f.BackgroundTransparency=UDim2.new(0,260,0,150),UDim2.new(0.5,-130,0.5,-75),Color3.fromRGB(15,12,30),0.15
-Instance.new("UICorner",f).CornerRadius=UDim.new(0,16)
-local t=Instance.new("TextLabel",f)t.Size,t.Position,t.BackgroundTransparency=UDim2.new(1,0,0,30),UDim2.new(0,0,0,6),1 t.Font,t.TextSize,t.TextColor3,t.Text=Enum.Font.GothamBlack,20,Color3.fromRGB(200,150,255),"Wezex Hub"t.TextXAlignment=Enum.TextXAlignment.Center
-local ii=Instance.new("TextLabel",f)ii.Size,ii.Position,ii.BackgroundTransparency=UDim2.new(1,0,0,18),UDim2.new(0,0,0,42),1 ii.Font,ii.TextSize,ii.TextColor3,ii.Text=Enum.Font.Gotham,12,Color3.fromRGB(160,160,200),"Введите ключ"ii.TextXAlignment=Enum.TextXAlignment.Center
-local b=Instance.new("TextBox",f)b.Size,b.Position,b.BackgroundColor3,b.BackgroundTransparency=UDim2.new(0.6,0,0,34),UDim2.new(0.2,0,0,66),Color3.fromRGB(30,28,50),0.3 b.Font,b.TextSize,b.TextColor3,b.Text=Enum.Font.GothamBold,16,Color3.fromRGB(255,255,255),""b.PlaceholderText,b.PlaceholderColor3,b.ClearTextOnFocus="Ключ",Color3.fromRGB(120,120,160),false
-Instance.new("UICorner",b).CornerRadius=UDim.new(0,10)
-local btn=Instance.new("TextButton",f)btn.Size,btn.Position,btn.BackgroundColor3,btn.BackgroundTransparency=UDim2.new(0.35,0,0,34),UDim2.new(0.325,0,0,106),Color3.fromRGB(150,100,255),0.2 btn.Text,btn.TextSize,btn.TextColor3,btn.Font="Войти",16,Color3.fromRGB(255,255,255),Enum.Font.GothamBold
-Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
-local cn
-local function ck()if b.Text=="38399923"then if cn then cn:Disconnect()end g:Destroy()bU()else b.Text=""b.PlaceholderText="Неверно!"b.PlaceholderColor3=Color3.fromRGB(255,80,80)task.wait(0.6)b.PlaceholderText,b.PlaceholderColor3="Ключ",Color3.fromRGB(120,120,160)end end
-btn.MouseButton1Click:Connect(ck)b.FocusLost:Connect(function(e)if e then ck()end end)
-cn=UIS.InputBegan:Connect(function(i,gp)if not gp and i.KeyCode==Enum.KeyCode.Return then ck()end end)end
-
-sK()
+local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
+at:Section({Title="Wezex Hub v4.6"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)end})
+N("Wezex Hub","Загружено успешно","Success",3)
