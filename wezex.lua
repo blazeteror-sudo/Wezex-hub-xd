@@ -1,7 +1,7 @@
 local L=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 local PL=game:GetService("Players")local LP=PL.LocalPlayer local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
 local S={esp=false,aim=false,noclip=false,infjump=false,fov=250,part="Head",vis=true}
-local W=L:CreateWindow({Title="Wezex Hub v5.4",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
+local W=L:CreateWindow({Title="Wezex Hub v5.8",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
 local aC,fC=nil,Drawing.new("Circle")fC.Thickness,fC.NumSides,fC.Filled=1,60,false fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
 local function uF()fC.Visible=S.aim if S.aim then fC.Position=CAM.ViewportSize/2 fC.Radius=S.fov end end
 local function hL(p)if not S.vis then return true end local rp=RaycastParams.new()rp.FilterType=Enum.RaycastFilterType.Exclude rp.FilterDescendantsInstances={LP.Character}local r=workspace:Raycast(CAM.CFrame.Position,p.Position-CAM.CFrame.Position,rp)return not r or r.Instance:IsDescendantOf(p.Parent)end
@@ -50,7 +50,31 @@ local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
--- TP TO NEAREST PLAYER (WindUI-style button)
+local speedEnabled=false
+local speedConn=nil
+local SPEED_VALUE=32
+local function applySpeed()
+if not speedEnabled then return end
+local char=LP.Character
+if not char then return end
+local hum=char:FindFirstChildOfClass("Humanoid")
+if hum then hum.WalkSpeed=SPEED_VALUE end
+end
+local function tSp(on)
+speedEnabled=on
+if on then
+applySpeed()
+if speedConn then speedConn:Disconnect() end
+speedConn=RS.Heartbeat:Connect(applySpeed)
+else
+if speedConn then speedConn:Disconnect() speedConn=nil end
+local char=LP.Character
+if char then
+local hum=char:FindFirstChildOfClass("Humanoid")
+if hum then hum.WalkSpeed=16 end
+end
+end
+end 
 local tpEnabled=false
 local tpCooldown=0
 local TP_CD=1.0
@@ -69,10 +93,7 @@ local h=p.Character:FindFirstChildOfClass("Humanoid")
 local hr=p.Character:FindFirstChild("HumanoidRootPart")
 if h and h.Health>0 and hr then
 local d=(hr.Position-myPos).Magnitude
-if d<bestDist then
-best=hr
-bestDist=d
-end
+if d<bestDist then best=hr bestDist=d end
 end
 end
 end
@@ -85,9 +106,7 @@ local myHrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 if not target or not myHrp then return end
 local pos=target.Position
 local dir=(myHrp.Position-pos)
-if dir.Magnitude>0.1 then
-pos=pos+dir.Unit*TP_OFFSET
-end
+if dir.Magnitude>0.1 then pos=pos+dir.Unit*TP_OFFSET end
 myHrp.CFrame=CFrame.new(pos)
 tpCooldown=os.clock()+TP_CD
 end
@@ -110,43 +129,20 @@ tpBtn.Text=""
 tpBtn.AutoButtonColor=true
 tpBtn.Active=true
 tpBtn.Parent=tpGui
-local corner=Instance.new("UICorner")
-corner.CornerRadius=UDim.new(1,0)
-corner.Parent=tpBtn
-local grad=Instance.new("UIGradient")
-grad.Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255))
-grad.Rotation=45
-grad.Parent=tpBtn
-local stroke=Instance.new("UIStroke")
-stroke.Color=Color3.fromRGB(255,255,255)
-stroke.Thickness=1
-stroke.Transparency=0.7
-stroke.Parent=tpBtn
-local icon=Instance.new("ImageLabel")
-icon.Size=UDim2.new(0,24,0,24)
-icon.Position=UDim2.new(0.5,-12,0.5,-12)
-icon.BackgroundTransparency=1
-icon.Image="rbxassetid://10734886055"
-icon.ImageColor3=Color3.fromRGB(255,255,255)
-icon.Parent=tpBtn
-local dragging=false
-local dragStart=nil
-local startPos=nil
-local tapStart=nil
+local corner=Instance.new("UICorner") corner.CornerRadius=UDim.new(1,0) corner.Parent=tpBtn
+local grad=Instance.new("UIGradient") grad.Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)) grad.Rotation=45 grad.Parent=tpBtn
+local stroke=Instance.new("UIStroke") stroke.Color=Color3.fromRGB(255,255,255) stroke.Thickness=1 stroke.Transparency=0.7 stroke.Parent=tpBtn
+local icon=Instance.new("ImageLabel") icon.Size=UDim2.new(0,26,0,26) icon.Position=UDim2.new(0.5,-13,0.5,-13) icon.BackgroundTransparency=1 icon.Image="rbxassetid://8982623704" icon.ImageColor3=Color3.fromRGB(255,255,255) icon.Parent=tpBtn
+local dragging=false local dragStart=nil local startPos=nil local tapStart=nil
 tpBtn.InputBegan:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragging=true
-dragStart=input.Position
-startPos=tpBtn.Position
-tapStart=input.Position
+dragging=true dragStart=input.Position startPos=tpBtn.Position tapStart=input.Position
 end
 end)
 tpBtn.InputEnded:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
 dragging=false
-if tapStart and (input.Position-tapStart).Magnitude<10 then
-doTP()
-end
+if tapStart and (input.Position-tapStart).Magnitude<10 then doTP() end
 tapStart=nil
 end
 end)
@@ -163,7 +159,45 @@ if tpGui then tpGui:Destroy() tpGui=nil end
 tpBtn=nil
 end
 end
--- FIREFLIES
+local jumpCircleEnabled=false
+local jumpConn=nil
+local function spawnJumpCircle(pos)
+local ring=Instance.new("Part")
+ring.Shape=Enum.PartType.Cylinder
+ring.Size=Vector3.new(0.15,3,3)
+ring.Material=Enum.Material.Neon
+ring.Color=Color3.fromRGB(120,200,255)
+ring.Anchored=true
+ring.CanCollide=false
+ring.CanQuery=false
+ring.CastShadow=false
+ring.CFrame=CFrame.new(pos)
+ring.Parent=workspace
+local ring2=ring:Clone()
+ring2.Size=Vector3.new(0.15,4.5,4.5)
+ring2.Color=Color3.fromRGB(200,120,255)
+ring2.Transparency=0.4
+ring2.CFrame=CFrame.new(pos)
+ring2.Parent=workspace
+local light=Instance.new("PointLight")
+light.Color=Color3.fromRGB(180,160,255)
+light.Range=10
+light.Brightness=4
+light.Shadows=false
+light.Parent=ring
+game:GetService("Debris"):AddItem(ring,0.6)
+game:GetService("Debris"):AddItem(ring2,0.6)
+game:GetService("Debris"):AddItem(light,0.6)
+end
+local function tJC(on)
+jumpCircleEnabled=on
+if jumpConn then jumpConn:Disconnect() jumpConn=nil end
+if not on then return end
+jumpConn=UIS.JumpRequest:Connect(function()
+local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if hrp then spawnJumpCircle(hrp.Position-Vector3.new(0,2.5,0)) end
+end)
+end
 local fFlies={}
 local fConn=nil
 local FLY_COUNT=80
@@ -222,7 +256,14 @@ end
 end
 end)
 end
-local SK={["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"}}
+local SK={
+["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"},
+["Golden Sunset"]={Bk="rbxassetid://323494035",Dn="rbxassetid://323494368",Ft="rbxassetid://323494130",Lf="rbxassetid://323494252",Rt="rbxassetid://323494067",Up="rbxassetid://323493360"},
+["Deep Space"]={Bk="rbxassetid://196263782",Dn="rbxassetid://196263643",Ft="rbxassetid://196263721",Lf="rbxassetid://196263782",Rt="rbxassetid://196263782",Up="rbxassetid://196263782"},
+["Night Starry"]={Bk="rbxassetid://13232312793",Dn="rbxassetid://13232312793",Ft="rbxassetid://13232312793",Lf="rbxassetid://13232312793",Rt="rbxassetid://13232312793",Up="rbxassetid://13232312793"},
+["Pink Sunset"]={Bk="rbxassetid://13306119880",Dn="rbxassetid://13306119880",Ft="rbxassetid://13306119880",Lf="rbxassetid://13306119880",Rt="rbxassetid://13306119880",Up="rbxassetid://13306119880"},
+["Blood Moon"]={Bk="rbxassetid://13386038536",Dn="rbxassetid://13386038536",Ft="rbxassetid://13386038536",Lf="rbxassetid://13386038536",Rt="rbxassetid://13386038536",Up="rbxassetid://13386038536"}
+}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=14 s.MoonAngularSize=14 s.StarCount=5000 s.CelestialBodiesShown=true s.Parent=LGT end
 local shI={}
 local shAnim=nil
@@ -268,7 +309,7 @@ local function rT(c)local t=TR[c]if not t then return end for _,tr in ipairs(t.t
 local tC,tM={},nil
 local function tT(on)if on then if tM then tM:Disconnect()end for _,p in ipairs(PL:GetPlayers())do if p.Character then mT(p.Character)end tC[p]={c=p.CharacterAdded:Connect(mT),r=p.CharacterRemoving:Connect(rT)}end tM=PL.PlayerAdded:Connect(function(p)tC[p]={c=p.CharacterAdded:Connect(mT),r=p.CharacterRemoving:Connect(rT)}end)
 else if tM then tM:Disconnect()tM=nil end for _,c in pairs(tC)do if c.c then c.c:Disconnect()end if c.r then c.r:Disconnect()end end tC={}for ch,_ in pairs(TR)do rT(ch)end end end
-local function cV()tF(false)tS(false)tT(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
+local function cV()tF(false)tS(false)tT(false)tJC(false)local s=LGT:FindFirstChildOfClass("Sky")if s then s:Destroy()end end
 local ct=W:Tab({Title="Combat",Icon="solar:sword-bold"})local cs=ct:Section({Title="Aimbot"})
 cs:Toggle({Title="Aimbot",Value=false,Callback=function(v)if v~=S.aim then tA()end end})
 cs:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v uF()end})
@@ -281,13 +322,17 @@ ts:Slider({Title="TP Distance",Value={Min=1,Max=10,Default=25},Callback=function
 local mt=W:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="Movement"})
 ms:Toggle({Title="Noclip",Value=false,Callback=function(v)if v~=S.noclip then tN()end end})
 ms:Toggle({Title="Infinity Jump",Value=false,Callback=function(v)if v~=S.infJump then tJ()end end})
+ms:Toggle({Title="Speed Hack",Value=false,Callback=function(v)tSp(v)end})
+ms:Slider({Title="Speed Value",Value={Min=16,Max=200,Default=32},Callback=function(v)SPEED_VALUE=v end})
 local vt=W:Tab({Title="Visuals",Icon="solar:eye-bold"})
 local vs=vt:Section({Title="ESP"})
 vs:Toggle({Title="ESP (Stylish)",Value=false,Callback=function(v)if v~=S.esp then tE()end end})
+local jc=vt:Section({Title="Jump Effect"})
+jc:Toggle({Title="Jump Circle",Value=false,Callback=function(v)tJC(v)end})
 local fx=vt:Section({Title="Effects"})
 fx:Toggle({Title="Fireflies 3D",Value=false,Callback=function(v)tF(v)end})
-fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula"},Value="Стандарт",Callback=function(v)aS(v)end})
+fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula","Golden Sunset","Deep Space","Night Starry","Pink Sunset","Blood Moon"},Value="Стандарт",Callback=function(v)aS(v)end})
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
-fx:Toggle({Title="Spiral Trails",Value=false,Callback(function(v)tT(v)end)})
+fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v5.4"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if tpGui then tpGui:Destroy()end pcall(function()fC:Remove()end)W:Destroy()end})
+at:Section({Title="Wezex Hub v5.8"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if tpGui then tpGui:Destroy()end pcall(function()fC:Remove()end)W:Destroy()end})
