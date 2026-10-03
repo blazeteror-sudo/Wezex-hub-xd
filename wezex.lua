@@ -67,27 +67,99 @@ local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
-local fFlies={}local fConn=nil
+local fFlies={}
+local fConn=nil
+local FLY_COUNT=80
+local WORLD_RADIUS=350
 local function tF(on)
-if not on then if fConn then fConn:Disconnect()fConn=nil end for _,f in ipairs(fFlies)do if f.part then f.part:Destroy()end end fFlies={}return end
+if not on then
+if fConn then fConn:Disconnect()fConn=nil end
+for _,f in ipairs(fFlies)do if f.part then f.part:Destroy()end if f.light then f.light:Destroy()end if f.glow then f.glow:Destroy()end if f.trail then f.trail:Destroy()end end
+fFlies={}return
+end
 if fConn then return end
 local rng=Random.new()
-local function makeFly()
-local part=Instance.new("Part")part.Shape=Enum.PartType.Ball part.Size=Vector3.new(0.35,0.35,0.35)part.Material=Enum.Material.Neon part.Color=Color3.fromRGB(255,240,120)part.Anchored=true part.CanCollide=false part.CanQuery=false part.CastShadow=false part.Parent=workspace
-local light=Instance.new("PointLight")light.Color=Color3.fromRGB(255,235,120)light.Range=18 light.Brightness=3 light.Shadows=false light.Parent=part
-local bill=Instance.new("BillboardGui")bill.Size=UDim2.new(0,60,0,60)bill.AlwaysOnTop=false bill.LightInfluence=0 bill.Parent=part
-local img=Instance.new("ImageLabel")img.BackgroundTransparency=1 img.Image="rbxassetid://243660364"img.ImageColor3=Color3.fromRGB(255,240,140)img.Size=UDim2.new(1,0,1,0)img.Parent=bill
-return{part=part,light=light,angle=rng:NextNumber(0,math.pi*2),radius=rng:NextNumber(5,16),height=rng:NextNumber(-4,6),speed=rng:NextNumber(0.4,1.1),vertSpeed=rng:NextNumber(0.5,1.4),phase=rng:NextNumber(0,10)}
+local basePos=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")and LP.Character.HumanoidRootPart.Position or Vector3.new(0,50,0)
+local function randPos()
+local a=rng:NextNumber(0,math.pi*2)
+local r=rng:NextNumber(30,WORLD_RADIUS)
+local x=basePos.X+math.cos(a)*r
+local z=basePos.Z+math.sin(a)*r
+local y=basePos.Y+rng:NextNumber(-15,45)
+return Vector3.new(x,y,z)
 end
-for i=1,14 do table.insert(fFlies,makeFly())end
-fConn=RS.RenderStepped:Connect(function(dt)
-local cam=CAM.CFrame
+local function makeFly()
+local part=Instance.new("Part")
+part.Size=Vector3.new(0.22,0.22,1.6)
+part.Material=Enum.Material.Neon
+part.Color=Color3.fromRGB(255,240,140)
+part.Anchored=true
+part.CanCollide=false
+part.CanQuery=false
+part.CastShadow=false
+part.Shape=Enum.PartType.Cylinder
+part.CFrame=CFrame.new(randPos())
+part.Parent=workspace
+local light=Instance.new("PointLight")
+light.Color=Color3.fromRGB(255,235,130)
+light.Range=14
+light.Brightness=3.5
+light.Shadows=false
+light.Parent=part
+local glow=Instance.new("BillboardGui")
+glow.Size=UDim2.new(0,70,0,70)
+glow.AlwaysOnTop=false
+glow.LightInfluence=0
+glow.Parent=part
+local img=Instance.new("ImageLabel")
+img.BackgroundTransparency=1
+img.Image="rbxassetid://243660364"
+img.ImageColor3=Color3.fromRGB(255,240,150)
+img.ImageTransparency=0.15
+img.Size=UDim2.new(1,0,1,0)
+img.Parent=glow
+local a0=Instance.new("Attachment",part)a0.Position=Vector3.new(0,0,0.6)
+local a1=Instance.new("Attachment",part)a1.Position=Vector3.new(0,0,-0.6)
+local trail=Instance.new("Trail")
+trail.Attachment0=a0
+trail.Attachment1=a1
+trail.Lifetime=0.6
+trail.MinLength=0.05
+trail.Texture="rbxassetid://243660364"
+trail.TextureMode=Enum.TextureMode.Stretch
+trail.LightEmission=1
+trail.LightInfluence=0
+trail.Color=ColorSequence.new(Color3.fromRGB(255,240,140))
+trail.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,1)})
+trail.Parent=part
+return{
+part=part,light=light,glow=glow,trail=trail,
+pos=part.Position,
+target=randPos(),
+speed=rng:NextNumber(8,22),
+turnSpeed=rng:NextNumber(0.4,1.4),
+phase=rng:NextNumber(0,10),
+}
+end
+for i=1,FLY_COUNT do table.insert(fFlies,makeFly())end
+fConn=RS.Heartbeat:Connect(function(dt)
 for _,f in ipairs(fFlies)do
-f.angle=f.angle+f.speed*dt f.phase=f.phase+f.vertSpeed*dt
-local x=math.cos(f.angle)*f.radius local z=math.sin(f.angle)*f.radius local y=math.sin(f.phase)*2.2
-f.part.CFrame=cam*CFrame.new(x,y+f.height,z)
-f.light.Brightness=2.5*(0.7+math.sin(f.phase*1.7)*0.3)
-end end)
+if f.part and f.part.Parent then
+local cur=f.part.Position
+local dir=f.target-cur
+local dist=dir.Magnitude
+if dist<3 then f.target=randPos() end
+local moveDir=dist>0.001 and dir.Unit or Vector3.new(0,1,0)
+local newPos=cur+moveDir*f.speed*dt
+local lookAt=newPos+moveDir
+f.part.CFrame=CFrame.lookAt(newPos,lookAt)*CFrame.Angles(0,math.pi/2,0)
+local wiggle=math.sin(f.phase+os.clock()*3)*0.35
+f.part.CFrame=f.part.CFrame*CFrame.new(0,wiggle,0)
+f.phase=f.phase+dt*f.turnSpeed
+f.light.Brightness=3+math.sin(f.phase*2)*1.2
+end
+end
+end)
 end
 local SK={["Galaxy"]={Bk="rbxassetid://159454299",Dn="rbxassetid://159454296",Ft="rbxassetid://159454293",Lf="rbxassetid://159454293",Rt="rbxassetid://159454293",Up="rbxassetid://159454293"},["Purple Nebula"]={Bk="rbxassetid://8107841671",Dn="rbxassetid://6444884785",Ft="rbxassetid://8107841671",Lf="rbxassetid://8107841671",Rt="rbxassetid://8107841671",Up="rbxassetid://8107849791"},["Aesthetic Mountains"]={Bk="rbxassetid://15470198023",Dn="rbxassetid://15470151245",Ft="rbxassetid://15470200128",Lf="rbxassetid://15470202648",Rt="rbxassetid://15470204862",Up="rbxassetid://15470207755"}}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=21 s.MoonAngularSize=21 s.StarCount=5000 s.Parent=LGT end
