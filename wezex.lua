@@ -1,7 +1,7 @@
 local L=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 local PL=game:GetService("Players")local LP=PL.LocalPlayer local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
 local S={esp=false,aim=false,noclip=false,infjump=false,fov=250,part="Head",vis=true}
-local W=L:CreateWindow({Title="Wezex Hub v4.7",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
+local W=L:CreateWindow({Title="Wezex Hub v4.8",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
 local aC,fC=nil,Drawing.new("Circle")fC.Thickness,fC.NumSides,fC.Filled=1,60,false fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
 local function uF()fC.Visible=S.aim if S.aim then fC.Position=CAM.ViewportSize/2 fC.Radius=S.fov end end
 local function hL(p)if not S.vis then return true end local rp=RaycastParams.new()rp.FilterType=Enum.RaycastFilterType.Exclude rp.FilterDescendantsInstances={LP.Character}local r=workspace:Raycast(CAM.CFrame.Position,p.Position-CAM.CFrame.Position,rp)return not r or r.Instance:IsDescendantOf(p.Parent)end
@@ -50,6 +50,64 @@ local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
+-- PEEK ASSIST (AUTO)
+local peekEnabled=false
+local peekConn=nil
+local peekCooldown=0
+local PEEK_SPEED=90
+local PEEK_TIME=0.12
+local PEEK_CD=0.35
+local function doPeek(dir)
+local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+local vel=Instance.new("LinearVelocity")
+local att=Instance.new("Attachment",hrp)
+vel.Attachment0=att
+vel.MaxForce=math.huge
+vel.VectorVelocity=CAM.CFrame.RightVector*(dir*PEEK_SPEED)
+vel.RelativeTo=Enum.ActuatorRelativeTo.World
+vel.Parent=hrp
+task.delay(PEEK_TIME,function()
+if vel then vel:Destroy() end
+if att then att:Destroy() end
+end)
+end
+local function checkPeek()
+if not peekEnabled then return end
+if os.clock()<peekCooldown then return end
+local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+local myPos=hrp.Position
+for _,p in ipairs(PL:GetPlayers())do
+if p~=LP and p.Character then
+local h=p.Character:FindFirstChildOfClass("Humanoid")
+local head=p.Character:FindFirstChild("Head")
+if h and h.Health>0 and head then
+local rp=RaycastParams.new()
+rp.FilterType=Enum.RaycastFilterType.Exclude
+rp.FilterDescendantsInstances={LP.Character}
+local ray=workspace:Raycast(myPos,head.Position-myPos,rp)
+local blockedByWall=ray~=nil
+local onScreen=select(2,CAM:WorldToViewportPoint(head.Position))
+if blockedByWall and onScreen then
+local toEnemy=head.Position-myPos
+local camRight=CAM.CFrame.RightVector
+local sideSign=toEnemy:Dot(camRight)
+local dir=sideSign>=0 and 1 or -1
+doPeek(dir)
+peekCooldown=os.clock()+PEEK_CD
+return
+end
+end
+end
+end
+end
+peekConn=RS.Heartbeat:Connect(checkPeek)
+local function tP(on)
+peekEnabled=on
+if not on then peekCooldown=0 end
+end
+-- FIREFLIES
 local fFlies={}
 local fConn=nil
 local FLY_COUNT=80
@@ -89,14 +147,7 @@ light.Range=14
 light.Brightness=3.5
 light.Shadows=false
 light.Parent=part
-return{
-part=part,light=light,
-pos=part.Position,
-target=randPos(),
-speed=rng:NextNumber(8,22),
-turnSpeed=rng:NextNumber(0.4,1.4),
-phase=rng:NextNumber(0,10),
-}
+return{part=part,light=light,pos=part.Position,target=randPos(),speed=rng:NextNumber(8,22),turnSpeed=rng:NextNumber(0.4,1.4),phase=rng:NextNumber(0,10)}
 end
 for i=1,FLY_COUNT do table.insert(fFlies,makeFly())end
 fConn=RS.Heartbeat:Connect(function(dt)
@@ -115,9 +166,7 @@ end
 end
 end)
 end
-local SK={
-["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"}
-}
+local SK={["Cosmic Nebula"]={Bk="rbxassetid://169210090",Dn="rbxassetid://169210108",Ft="rbxassetid://169210121",Lf="rbxassetid://169210133",Rt="rbxassetid://169210143",Up="rbxassetid://169210149"}}
 local function aS(n)local o=LGT:FindFirstChildOfClass("Sky")if o then o:Destroy()end if n=="Стандарт"then return end local d=SK[n]if not d then return end local s=Instance.new("Sky")s.SkyboxBk=d.Bk s.SkyboxDn=d.Dn s.SkyboxFt=d.Ft s.SkyboxLf=d.Lf s.SkyboxRt=d.Rt s.SkyboxUp=d.Up s.SunAngularSize=14 s.MoonAngularSize=14 s.StarCount=5000 s.CelestialBodiesShown=true s.Parent=LGT end
 local shI={}
 local shAnim=nil
@@ -169,6 +218,10 @@ cs:Toggle({Title="Aimbot",Value=false,Callback=function(v)if v~=S.aim then tA()e
 cs:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v uF()end})
 cs:Dropdown({Title="Hit Part",Values={"Head","HumanoidRootPart","UpperTorso"},Value="Head",Callback=function(v)S.part=v end})
 cs:Toggle({Title="Wall Check",Value=true,Callback=function(v)S.vis=v end})
+local ps=ct:Section({Title="Peek Assist"})
+ps:Toggle({Title="Auto Peek",Value=false,Callback=function(v)tP(v)end})
+ps:Slider({Title="Peek Power",Value={Min=40,Max=200,Default=90},Callback=function(v)PEEK_SPEED=v end})
+ps:Slider({Title="Peek Cooldown",Value={Min=0.1,Max=1.5,Default=0.35},Callback=function(v)PEEK_CD=v end})
 local mt=W:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="Movement"})
 ms:Toggle({Title="Noclip",Value=false,Callback=function(v)if v~=S.noclip then tN()end end})
 ms:Toggle({Title="Infinity Jump",Value=false,Callback=function(v)if v~=S.infJump then tJ()end end})
@@ -181,4 +234,4 @@ fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula"},Value="�
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v4.7"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end pcall(function()fC:Remove()end)W:Destroy()end})
+at:Section({Title="Wezex Hub v4.8"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if peekConn then peekConn:Disconnect()end pcall(function()fC:Remove()end)W:Destroy()end})
