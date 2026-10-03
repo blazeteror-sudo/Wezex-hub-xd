@@ -1,7 +1,7 @@
 local L=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 local PL=game:GetService("Players")local LP=PL.LocalPlayer local CAM=workspace.CurrentCamera local UIS=game:GetService("UserInputService")local RS=game:GetService("RunService")local LGT=game:GetService("Lighting")
 local S={esp=false,aim=false,noclip=false,infjump=false,fov=250,part="Head",vis=true}
-local W=L:CreateWindow({Title="Wezex Hub v4.8",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
+local W=L:CreateWindow({Title="Wezex Hub v4.9",Folder="WezexHub",Icon="solar:folder-2-bold-duotone",OpenButton={Title="Wezex Hub",Color=ColorSequence.new(Color3.fromRGB(255,100,255),Color3.fromRGB(100,200,255)),Draggable=true,Scale=0.5}})
 local aC,fC=nil,Drawing.new("Circle")fC.Thickness,fC.NumSides,fC.Filled=1,60,false fC.Transparency,fC.Color,fC.Visible=0.5,Color3.new(1,1,1),false
 local function uF()fC.Visible=S.aim if S.aim then fC.Position=CAM.ViewportSize/2 fC.Radius=S.fov end end
 local function hL(p)if not S.vis then return true end local rp=RaycastParams.new()rp.FilterType=Enum.RaycastFilterType.Exclude rp.FilterDescendantsInstances={LP.Character}local r=workspace:Raycast(CAM.CFrame.Position,p.Position-CAM.CFrame.Position,rp)return not r or r.Instance:IsDescendantOf(p.Parent)end
@@ -50,13 +50,14 @@ local nC,oC=nil,{}
 local function tN()S.noclip=not S.noclip if S.noclip then if nC then nC:Disconnect()end nC=RS.Stepped:Connect(function()local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then if oC[p]==nil then oC[p]=p.CanCollide end p.CanCollide=false end end end end)else if nC then nC:Disconnect()nC=nil end local c=LP.Character if c then for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then p.CanCollide=oC[p]~=nil and oC[p]or false end end end oC={}end end
 local iC
 local function tJ()S.infJump=not S.infJump if S.infJump then if iC then iC:Disconnect()end iC=UIS.JumpRequest:Connect(function()local c=LP.Character if c and c:FindFirstChildOfClass("Humanoid")then c:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)end end)else if iC then iC:Disconnect()iC=nil end end end
--- PEEK ASSIST (AUTO)
+-- PEEK ASSIST (AUTO) — переделанная логика
 local peekEnabled=false
-local peekConn=nil
 local peekCooldown=0
 local PEEK_SPEED=90
 local PEEK_TIME=0.12
-local PEEK_CD=0.35
+local PEEK_CD=1.0
+local PEEK_MIN_DIST=20
+local PEEK_MAX_DIST=120
 local function doPeek(dir)
 local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 if not hrp then return end
@@ -82,18 +83,25 @@ for _,p in ipairs(PL:GetPlayers())do
 if p~=LP and p.Character then
 local h=p.Character:FindFirstChildOfClass("Humanoid")
 local head=p.Character:FindFirstChild("Head")
-if h and h.Health>0 and head then
-local rp=RaycastParams.new()
-rp.FilterType=Enum.RaycastFilterType.Exclude
-rp.FilterDescendantsInstances={LP.Character}
-local ray=workspace:Raycast(myPos,head.Position-myPos,rp)
-local blockedByWall=ray~=nil
+local hrp2=p.Character:FindFirstChild("HumanoidRootPart")
+if h and h.Health>0 and head and hrp2 then
+local dist=(hrp2.Position-myPos).Magnitude
+if dist<PEEK_MIN_DIST or dist>PEEK_MAX_DIST then continue end
+local rp1=RaycastParams.new()
+rp1.FilterType=Enum.RaycastFilterType.Exclude
+rp1.FilterDescendantsInstances={LP.Character}
+local ray1=workspace:Raycast(myPos,head.Position-myPos,rp1)
+if not ray1 then continue end
+local rp2=RaycastParams.new()
+rp2.FilterType=Enum.RaycastFilterType.Exclude
+rp2.FilterDescendantsInstances={p.Character}
+local ray2=workspace:Raycast(hrp2.Position,myPos-hrp2.Position,rp2)
+if ray2 then continue end
 local onScreen=select(2,CAM:WorldToViewportPoint(head.Position))
-if blockedByWall and onScreen then
+if not onScreen then continue end
 local toEnemy=head.Position-myPos
 local camRight=CAM.CFrame.RightVector
-local sideSign=toEnemy:Dot(camRight)
-local dir=sideSign>=0 and 1 or -1
+local dir=toEnemy:Dot(camRight)>=0 and 1 or -1
 doPeek(dir)
 peekCooldown=os.clock()+PEEK_CD
 return
@@ -101,13 +109,11 @@ end
 end
 end
 end
-end
-peekConn=RS.Heartbeat:Connect(checkPeek)
+local peekConn=RS.Heartbeat:Connect(checkPeek)
 local function tP(on)
 peekEnabled=on
 if not on then peekCooldown=0 end
 end
--- FIREFLIES
 local fFlies={}
 local fConn=nil
 local FLY_COUNT=80
@@ -221,7 +227,9 @@ cs:Toggle({Title="Wall Check",Value=true,Callback=function(v)S.vis=v end})
 local ps=ct:Section({Title="Peek Assist"})
 ps:Toggle({Title="Auto Peek",Value=false,Callback=function(v)tP(v)end})
 ps:Slider({Title="Peek Power",Value={Min=40,Max=200,Default=90},Callback=function(v)PEEK_SPEED=v end})
-ps:Slider({Title="Peek Cooldown",Value={Min=0.1,Max=1.5,Default=0.35},Callback=function(v)PEEK_CD=v end})
+ps:Slider({Title="Peek Cooldown",Value={Min=0.1,Max=2.0,Default=1.0},Callback=function(v)PEEK_CD=v end})
+ps:Slider({Title="Min Distance",Value={Min=5,Max=50,Default=20},Callback=function(v)PEEK_MIN_DIST=v end})
+ps:Slider({Title="Max Distance",Value={Min=60,Max=250,Default=120},Callback=function(v)PEEK_MAX_DIST=v end})
 local mt=W:Tab({Title="Movement",Icon="solar:running-bold"})local ms=mt:Section({Title="Movement"})
 ms:Toggle({Title="Noclip",Value=false,Callback=function(v)if v~=S.noclip then tN()end end})
 ms:Toggle({Title="Infinity Jump",Value=false,Callback=function(v)if v~=S.infJump then tJ()end end})
@@ -234,4 +242,4 @@ fx:Dropdown({Title="Skybox",Values={"Стандарт","Cosmic Nebula"},Value="�
 fx:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
 fx:Toggle({Title="Spiral Trails",Value=false,Callback=function(v)tT(v)end})
 local at=W:Tab({Title="About",Icon="solar:info-square-bold"})
-at:Section({Title="Wezex Hub v4.8"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if peekConn then peekConn:Disconnect()end pcall(function()fC:Remove()end)W:Destroy()end})
+at:Section({Title="Wezex Hub v4.9"}):Button({Title="Destroy Window",Color=Color3.fromRGB(255,50,50),Callback=function()cE()cV()if aC then aC:Disconnect()end if peekConn then peekConn:Disconnect()end pcall(function()fC:Remove()end)W:Destroy()end})
