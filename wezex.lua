@@ -1,4 +1,4 @@
--- WEZEX HUB v4.8 (LIFTING SIMULATOR)
+-- WEZEX HUB v5.2 (LIFTING SIMULATOR)
 -- КЛЮЧ: 38399923
 local CG=game:GetService("CoreGui")
 local PL=game:GetService("Players")
@@ -7,7 +7,7 @@ local CAM=workspace.CurrentCamera
 local UIS=game:GetService("UserInputService")
 local RS=game:GetService("RunService")
 local LGT=game:GetService("Lighting")
-local VIM=game:GetService("VirtualInputManager")
+local VU=game:GetService("VirtualUser")
 
 local W=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
@@ -15,7 +15,6 @@ local W=loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/Wi
 local S={
     esp=false,
     fov=250,
-    part="Head",
     vis=true
 }
 
@@ -143,246 +142,22 @@ local function tE()
     end
 end
 
--- ================= FIREFLIES =================
-local fA,fP
-local function tF(on)
-    if on then
-        if fA then fA:Destroy()end
-        if fP then fP:Destroy()end
-        fA=Instance.new("Attachment") fA.Parent=CAM
-        fP=Instance.new("ParticleEmitter")
-        fP.Texture="rbxassetid://243660364"
-        fP.Color=ColorSequence.new({
-            ColorSequenceKeypoint.new(0,Color3.fromRGB(255,240,120)),
-            ColorSequenceKeypoint.new(0.5,Color3.fromRGB(180,255,120)),
-            ColorSequenceKeypoint.new(1,Color3.fromRGB(255,200,80))
-        })
-        fP.LightEmission,fP.LightInfluence=1,0
-        fP.Size=NumberSequence.new({
-            NumberSequenceKeypoint.new(0,0),
-            NumberSequenceKeypoint.new(0.5,1.4),
-            NumberSequenceKeypoint.new(1,0)
-        })
-        fP.Transparency=NumberSequence.new({
-            NumberSequenceKeypoint.new(0,1),
-            NumberSequenceKeypoint.new(0.3,0),
-            NumberSequenceKeypoint.new(0.7,0),
-            NumberSequenceKeypoint.new(1,1)
-        })
-        fP.Lifetime=NumberRange.new(6,10)
-        fP.Rate=80
-        fP.Speed=NumberRange.new(1,3)
-        fP.SpreadAngle=Vector2.new(180,180)
-        fP.Acceleration=Vector3.new(0,0.5,0)
-        fP.Drag=2
-        fP.Rotation=NumberRange.new(0,360)
-        fP.RotSpeed=NumberRange.new(-50,50)
-        fP.ZOffset=2
-        fP.Parent=fA
-    else
-        if fP then fP:Destroy() fP=nil end
-        if fA then fA:Destroy() fA=nil end
-    end
-end
-
--- ================= SKYBOX =================
-local SK={
-    ["Galaxy"]={Bk="rbxassetid://159454299",Dn="rbxassetid://159454296",Ft="rbxassetid://159454293",Lf="rbxassetid://159454293",Rt="rbxassetid://159454293",Up="rbxassetid://159454293"},
-    ["Purple Nebula"]={Bk="rbxassetid://8107841671",Dn="rbxassetid://6444884785",Ft="rbxassetid://8107841671",Lf="rbxassetid://8107841671",Rt="rbxassetid://8107841671",Up="rbxassetid://8107849791"},
-    ["Aesthetic Mountains"]={Bk="rbxassetid://15470198023",Dn="rbxassetid://15470151245",Ft="rbxassetid://15470200128",Lf="rbxassetid://15470202648",Rt="rbxassetid://15470204862",Up="rbxassetid://15470207755"}
-}
-
-local function aS(n)
-    local o=LGT:FindFirstChildOfClass("Sky")
-    if o then o:Destroy()end
-    if n=="Стандарт"then return end
-    local d=SK[n]
-    if not d then return end
-    local s=Instance.new("Sky")
-    s.SkyboxBk=d.Bk
-    s.SkyboxDn=d.Dn
-    s.SkyboxFt=d.Ft
-    s.SkyboxLf=d.Lf
-    s.SkyboxRt=d.Rt
-    s.SkyboxUp=d.Up
-    s.SunAngularSize=21
-    s.MoonAngularSize=21
-    s.StarCount=5000
-    s.Parent=LGT
-end
-
--- ================= SHADER (CINEMATIC) =================
-local shI={}
-local shAnim=nil
-local shOrig={}
-
-local function tS(on)
-    if on then
-        for _,v in ipairs(shI)do v:Destroy()end
-        shI={}
-        shOrig.Tech=LGT.Technology
-        shOrig.Clock=LGT.ClockTime
-        shOrig.Bright=LGT.Brightness
-        shOrig.Shad=LGT.GlobalShadows
-        shOrig.Out=LGT.OutdoorAmbient
-        shOrig.EnvD=LGT.EnvironmentDiffuseScale
-        shOrig.EnvS=LGT.EnvironmentSpecularScale
-        shOrig.Exp=LGT.ExposureCompensation
-        pcall(function()LGT.Technology=Enum.Technology.Future end)
-        LGT.ClockTime=17.4
-        LGT.GeographicLatitude=41.7
-        LGT.Brightness=2.4
-        LGT.GlobalShadows=true
-        LGT.ShadowSoftness=0.15
-        LGT.ExposureCompensation=0.1
-        LGT.EnvironmentDiffuseScale=1
-        LGT.EnvironmentSpecularScale=1
-        LGT.OutdoorAmbient=Color3.fromRGB(75,70,85)
-        local a=LGT:FindFirstChildOfClass("Atmosphere")or Instance.new("Atmosphere")
-        a.Density,a.Offset,a.Color,a.Decay,a.Glare,a.Haze=0.32,0.25,Color3.fromRGB(195,170,155),Color3.fromRGB(105,115,130),0.4,2.1
-        a.Parent=LGT
-        table.insert(shI,a)
-        local b=Instance.new("BloomEffect")
-        b.Intensity,b.Size,b.Threshold=0.65,24,0.85
-        b.Parent=LGT
-        table.insert(shI,b)
-        local c=Instance.new("ColorCorrectionEffect")
-        c.Brightness,c.Contrast,c.Saturation,c.TintColor=0.03,0.22,0.18,Color3.fromRGB(255,248,242)
-        c.Parent=LGT
-        table.insert(shI,c)
-        local s=Instance.new("SunRaysEffect")
-        s.Intensity,s.Spread=0.25,0.8
-        s.Parent=LGT
-        table.insert(shI,s)
-        local d=Instance.new("DepthOfFieldEffect")
-        d.FarIntensity,d.FocusDistance,d.InFocusRadius,d.NearIntensity=0.35,20,25,0.15
-        d.Parent=LGT
-        table.insert(shI,d)
-        local t=0
-        if shAnim then shAnim:Disconnect()end
-        shAnim=RS.RenderStepped:Connect(function(dt)
-            t=t+dt*0.5
-            if s and s.Parent then s.Intensity=0.22+math.sin(t)*0.05 end
-            if b and b.Parent then b.Intensity=0.6+math.cos(t*0.8)*0.06 end
-        end)
-    else
-        for _,v in ipairs(shI)do v:Destroy()end
-        shI={}
-        if shAnim then shAnim:Disconnect() shAnim=nil end
-        if shOrig.Tech then pcall(function()LGT.Technology=shOrig.Tech end)end
-        LGT.ClockTime=shOrig.Clock or 14
-        LGT.Brightness=shOrig.Bright or 2
-        LGT.GlobalShadows=shOrig.Shad~=false
-        LGT.OutdoorAmbient=shOrig.Out or Color3.fromRGB(128,128,128)
-        LGT.EnvironmentDiffuseScale=shOrig.EnvD or 1
-        LGT.EnvironmentSpecularScale=shOrig.EnvS or 1
-        LGT.ExposureCompensation=shOrig.Exp or 0
-    end
-end
-
--- ================= CLEAR =================
-local function cV()
-    tF(false)
-    tS(false)
-    local s=LGT:FindFirstChildOfClass("Sky")
-    if s then s:Destroy()end
-end
-
--- ================= ПРОКАЧКА (UTILS) =================
-local PK={}
-PK.speedEnabled=false
-PK.speedValue=16
-PK.jumpEnabled=false
-PK.jumpValue=50
-PK.fullbright=false
-PK.gravityEnabled=false
-PK.gravityValue=196.2
-
-local function applySpeed()
-    local c=LP.Character
-    if not c then return end
-    local h=c:FindFirstChildOfClass("Humanoid")
-    if h then h.WalkSpeed=PK.speedEnabled and PK.speedValue or 16 end
-end
-
-local function applyJump()
-    local c=LP.Character
-    if not c then return end
-    local h=c:FindFirstChildOfClass("Humanoid")
-    if h then
-        h.UseJumpPower=true
-        h.JumpPower=PK.jumpEnabled and PK.jumpValue or 50
-    end
-end
-
-local function applyGravity()
-    workspace.Gravity=PK.gravityEnabled and PK.gravityValue or 196.2
-end
-
-local function applyFullbright()
-    if PK.fullbright then
-        LGT.Ambient=Color3.fromRGB(255,255,255)
-        LGT.OutdoorAmbient=Color3.fromRGB(255,255,255)
-        LGT.Brightness=3
-        LGT.ClockTime=12
-        LGT.FogEnd=1e9
-    else
-        LGT.Ambient=Color3.fromRGB(70,70,70)
-        LGT.OutdoorAmbient=Color3.fromRGB(128,128,128)
-        LGT.Brightness=2
-        LGT.FogEnd=100000
-    end
-end
-
-local charConn
-local function bindChar()
-    if charConn then charConn:Disconnect()end
-    applySpeed()
-    applyJump()
-    charConn=LP.CharacterAdded:Connect(function()
-        task.wait(1)
-        applySpeed()
-        applyJump()
-    end)
-end
-
--- ================= АВТОКЛИКЕР (LIFTING SIMULATOR) =================
+-- ================= АВТОКЛИКЕР =================
 local AC={
     enabled=false,
-    interval=0.05,
-    thread=nil
+    interval=0.05
 }
 
-local function doClick()
-    local pos=UIS:GetMouseLocation()
-    pcall(function()
-        VIM:SendMouseButtonEvent(pos.X,pos.Y,0,true,game,1)
-    end)
-    pcall(function()
-        VIM:SendMouseButtonEvent(pos.X,pos.Y,0,false,game,1)
-    end)
-end
-
-local function clickerLoop()
-    while AC.enabled do
-        doClick()
-        task.wait(AC.interval)
+task.spawn(function()
+    while task.wait(AC.interval) do
+        if AC.enabled then
+            pcall(function()
+                VU:CaptureController()
+                VU:ClickButton1(Vector2.new(0,0))
+            end)
+        end
     end
-end
-
-local function startAC()
-    if AC.enabled then return end
-    AC.enabled=true
-    AC.thread=task.spawn(clickerLoop)
-end
-
-local function stopAC()
-    AC.enabled=false
-    if AC.thread then
-        pcall(function() task.cancel(AC.thread) end)
-        AC.thread=nil
-    end
-end
+end)
 
 -- ================= АНИМАЦИИ / ЭМОЦИИ =================
 local ANIM={loaded=false}
@@ -407,7 +182,7 @@ end
 -- ================= UI =================
 function bU()
     local Wn=W:CreateWindow({
-        Title="Wezex Hub v4.8",
+        Title="Wezex Hub v5.2",
         Folder="WezexHub",
         Icon="solar:folder-2-bold-duotone",
         OpenButton={
@@ -425,90 +200,25 @@ function bU()
         if v~=S.esp then tE()end
     end})
     es:Toggle({Title="Wall Check",Value=true,Callback=function(v)S.vis=v end})
-    es:Slider({Title="FOV (для ESP масштаб)",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v end})
-
-    local ss=vt:Section({Title="🌌 Skybox"})
-    ss:Dropdown({
-        Title="Skybox",
-        Values={"Стандарт","Galaxy","Purple Nebula","Aesthetic Mountains"},
-        Value="Стандарт",
-        Callback=function(v)aS(v)end
-    })
-
-    local fs=vt:Section({Title="✨ Эффекты"})
-    fs:Toggle({Title="Fireflies (Светлячки)",Value=false,Callback=function(v)tF(v)end})
-    fs:Toggle({Title="Cinematic Shader",Value=false,Callback=function(v)tS(v)end})
+    es:Slider({Title="FOV",Value={Min=50,Max=1000,Default=250},Callback=function(v)S.fov=v end})
 
     local xs=vt:Section({Title="🎭 Анимации и Эмоции"})
-    xs:Toggle({
-        Title="Animation",
-        Desc="Запускает Motiona скрипт",
-        Value=false,
-        Callback=function(v)
-            if v then loadAnimation() end
-        end
-    })
-    xs:Toggle({
-        Title="Emoji",
-        Desc="Запускает Emotes скрипт",
-        Value=false,
-        Callback=function(v)
-            if v then loadEmoji() end
-        end
-    })
+    xs:Toggle({Title="Animation",Value=false,Callback=function(v)
+        if v then loadAnimation() end
+    end})
+    xs:Toggle({Title="Emoji",Value=false,Callback=function(v)
+        if v then loadEmoji() end
+    end})
 
     -- ===== ПРОКАЧКА =====
     local pt=Wn:Tab({Title="Прокачка",Icon="solar:rocket-bold"})
-    local ps=pt:Section({Title="🏃 Движение"})
-    ps:Toggle({Title="Speed Hack",Value=false,Callback=function(v)
-        PK.speedEnabled=v
-        applySpeed()
-    end})
-    ps:Slider({Title="Speed",Value={Min=16,Max=300,Default=16},Callback=function(v)
-        PK.speedValue=v
-        applySpeed()
-    end})
-    ps:Toggle({Title="Jump Power",Value=false,Callback=function(v)
-        PK.jumpEnabled=v
-        applyJump()
-    end})
-    ps:Slider({Title="Jump",Value={Min=50,Max=500,Default=50},Callback=function(v)
-        PK.jumpValue=v
-        applyJump()
-    end})
-    ps:Toggle({Title="Low Gravity",Value=false,Callback=function(v)
-        PK.gravityEnabled=v
-        applyGravity()
-    end})
-    ps:Slider({Title="Gravity",Value={Min=10,Max=196,Default=196},Callback=function(v)
-        PK.gravityValue=v
-        applyGravity()
-    end})
-
-    local vs=pt:Section({Title="🌍 Мир"})
-    vs:Toggle({Title="Fullbright",Value=false,Callback=function(v)
-        PK.fullbright=v
-        applyFullbright()
-    end})
-
-    -- ===== АВТОКЛИКЕР =====
     local acs=pt:Section({Title="🖱 АВТОКЛИКЕР"})
     acs:Toggle({Title="Включить автокликер",Value=false,Callback=function(v)
-        if v then startAC() else stopAC() end
+        AC.enabled=v
     end})
     acs:Slider({Title="Интервал клика (сек)",Value={Min=0.01,Max=2,Default=0.05},Callback=function(v)
         AC.interval=v
     end})
-
-    local cl=pt:Section({Title="🧹 Очистка"})
-    cl:Button({Title="Сбросить всё",Callback=function()
-        tE(); tF(false); tS(false); aS("Стандарт")
-        stopAC()
-        PK.speedEnabled=false; PK.jumpEnabled=false; PK.gravityEnabled=false; PK.fullbright=false
-        applySpeed(); applyJump(); applyGravity(); applyFullbright()
-    end})
-
-    bindChar()
 end
 
 bU()
